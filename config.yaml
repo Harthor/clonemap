@@ -1,0 +1,44 @@
+# Parámetros de clonemap. Cada etapa lee de acá; nada hardcodeado en los scripts.
+seed: 42
+
+paths:
+  gapfinder_db: ~/dev/projects/gapfinder/data/corpus.db   # SOLO LECTURA (?mode=ro)
+  gapfinder_env: ~/dev/projects/gapfinder/.env            # se lee GITHUB_TOKEN en runtime, no se copia
+  data: data
+  clones: data/clones
+
+selection:
+  pushed_after: "2024-10-21"        # último push en los últimos 2 años
+  llm_created_after: "2024-01-01"
+  target_per_domain: 1750           # meta 1.500–2.000
+  domains: [django, llm, etl]
+  min_py_lines: 2000
+  max_py_lines: 50000
+  supplement_min_stars: 3           # para completar Django vía GitHub Search (el corpus no alcanza)
+
+pilot:
+  n_repos: 200
+
+parse:
+  min_nonblank_lines: 6
+  template_file_min_repos: 5        # un archivo idéntico en >=N repos se trata como template
+
+dedup:
+  num_perm: 64
+  threshold: 0.8
+  shingle_tokens: 5
+
+embed:
+  model: Salesforce/codet5p-110m-embedding
+  max_tokens: 512
+  batch_size: 32
+
+cluster:
+  min_cluster_size: 10
+  umap_n_neighbors: 15
+  umap_n_components: 5
+
+report:
+  top_k: 50
+  min_owners: 8
+  examples_per_cluster: 5
