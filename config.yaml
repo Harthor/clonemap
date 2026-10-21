@@ -16,12 +16,22 @@ selection:
   max_py_lines: 50000
   supplement_min_stars: 3           # para completar Django vía GitHub Search (el corpus no alcanza)
 
+mode: pilot                         # pilot | full (también --mode). Salidas en data/<modo>/
+
 pilot:
-  n_repos: 200
+  quotas: {django: 70, llm: 100, etl: 30}   # 200 repos
+  overrides:                        # con 200 repos casi no hay clusters de 8 owners
+    cluster: {min_cluster_size: 5, min_samples: 3}
+    report: {min_owners: 3}
+
+download:
+  workers: 6
+  timeout_s: 300
 
 parse:
   min_nonblank_lines: 6
   template_file_min_repos: 5        # un archivo idéntico en >=N repos se trata como template
+  workers: 6
 
 dedup:
   num_perm: 64
@@ -30,13 +40,21 @@ dedup:
 
 embed:
   model: Salesforce/codet5p-110m-embedding
-  max_tokens: 512
-  batch_size: 32
+  max_tokens: 256                   # medido en M2: 512 tok → 13 fn/s, 256 tok bs16 → 20 fn/s
+  batch_size: 16
+  chunk: 5000
+  fp16: true
 
 cluster:
   min_cluster_size: 10
+  min_samples: 5
   umap_n_neighbors: 15
   umap_n_components: 5
+  prefilter: auto                   # on | off | auto (si hay más de prefilter_auto_above funciones)
+  prefilter_auto_above: 300000
+  knn_k: 30
+  knn_sim: 0.80
+  knn_min_other_owners: 2
 
 report:
   top_k: 50
