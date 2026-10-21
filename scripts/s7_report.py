@@ -46,13 +46,14 @@ def examples(topic: int) -> str:
 
 
 def cluster_section(rank: int, c) -> str:
-    doms = " · ".join(f"{k}: {v}" for k, v in sorted(c.domains.items(), key=lambda kv: -kv[1]))
+    doms = " · ".join(f"{k}: {int(v)}" for k, v in sorted(((k, v) for k, v in c.domains.items() if v), key=lambda kv: -kv[1]))
     terms = " ".join(f'<span class="term">{e(t)}</span>' for t in c.terms)
     return f"""<section class="cluster" id="c{c.topic}">
       <h2>#{rank} · cluster {c.topic}</h2>
       <div class="kpis"><span><b>{c.owners}</b> owners distintos</span><span><b>{c.repos}</b> repos</span>
-        <span><b>{c.n_functions}</b> variantes</span><span><b>{c.n_copias_total}</b> funciones con copias</span>
-        <span><b>{c.owners_incl_copias}</b> owners incl. copias</span><span>cohesión {c.cohesion:.2f}</span></div>
+        <span><b>{c.n_functions}</b> variantes</span><span><b>{c.n_copias_total}</b> funciones incl. copias</span>
+        <span><b>{c.owners_incl_copias}</b> owners incl. copias</span><span>cohesión {c.cohesion:.2f}</span>
+        <span>owner con más funciones: {c.top_owner_share:.0%}</span></div>
       <div class="muted">owners por dominio: {e(doms)}</div>
       <div class="terms">{terms}</div>
       <details open><summary>Funciones representativas (owners distintos, más cercanas al centroide)</summary>
@@ -90,7 +91,8 @@ ol {{ columns:2; font-size:13px; }} @media (max-width:700px) {{ ol {{ columns:1;
 </style></head><body>
 <h1>clonemap · {cfg['mode']}</h1>
 <p class="muted">Generado {datetime.now():%Y-%m-%d %H:%M}. Clusters de funciones con intención parecida y código distinto,
-ordenados por owners distintos (mínimo {R['min_owners']}). Es material para revisión manual: un cluster no implica que falte una librería.</p>
+ordenados por owners distintos (mínimo {R['min_owners']}). Es material para revisión manual: un cluster no implica que falte una librería.
+Cohesión = similitud coseno media al centroide (entre dos funciones al azar es ~0,23). Términos = identificadores usados por muchos owners del cluster y por pocos otros clusters.</p>
 <h3>Resumen por etapa</h3>{stats_table()}
 <h3>Top {len(top)} clusters</h3><ol>{index}</ol>
 {body}

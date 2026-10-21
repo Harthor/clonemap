@@ -3,7 +3,8 @@
 Prefiltro kNN opcional (FAISS): solo pasan funciones con al menos `knn_min_other_owners` vecinos de
 OTROS owners con similitud coseno >= `knn_sim`. Una función sin vecinos de otros owners no puede
 terminar en un cluster con muchos owners, y así UMAP entra en 8 GB de RAM.
-Términos: c-TF-IDF sobre identificadores partidos (snake_case / camelCase), sin palabras clave de Python.
+Términos: identificadores partidos (snake_case / camelCase) ponderados por owners distintos x idf entre
+clusters; también se guarda el c-TF-IDF de BERTopic (terms_ctfidf), que tiende a reflejar al owner dominante.
 Salidas: data/<modo>/s6_assign.parquet (fid, topic, sim_centroide), data/<modo>/s6_clusters.parquet
 Uso: uv run scripts/s6_cluster.py [--mode pilot|full] [--force]
 """
@@ -90,18 +91,41 @@ with stage(cfg, "s6_cluster", [ASSIGN, CLUSTERS]) as st:
     # Similitud de cada función al centroide de su cluster (espacio original, coseno)
     sim = np.full(len(fn), np.nan, np.float32)
     rows = []
-    for t, idx in fn[fn.topic >= 0].groupby("topic").indices.items():
+    # Términos por owners: palabra usada por muchos owners del cluster y por pocos clusters (idf).
+    # El c-TF-IDF de BERTopic queda dominado por el owner con más funciones en el cluster.
+    owner_words = fn.assign(w=[set(d.split()) for d in docs])
+    word_clusters = {}
+    for t, ws in owner_words[owner_words.topic >= 0].groupby("topic").w:
+        for w in set().union(*ws):
+            word_clusters[w] = word_clusters.get(w, 0) + 1
+    n_topics = max(1, len(set(topics)) - (1 if -1 in topics else 0))
+
+    def owner_terms(sub: pd.DataFrame, k: int = 12) -> list[str]:
+        per_owner = sub.groupby("owner").w.agg(lambda ws: set().union(*ws))
+        cnt = {}
+        for ws in per_owner:
+            for w in ws:
+                cnt[w] = cnt.get(w, 0) + 1
+        score = {w: c / len(per_owner) * np.log(n_topics / word_clusters[w]) for w, c in cnt.items() if c >= 2}
+        return [w for w, _ in sorted(score.items(), key=lambda kv: -kv[1])[:k]]
+
+    for t, idx in fn.groupby("topic").indices.items():  # índices posicionales sobre fn completo
+        if t < 0:
+            continue
         cen = emb[idx].mean(axis=0)
         cen /= np.linalg.norm(cen) + 1e-9
         sim[idx] = emb[idx] @ cen
         sub = fn.iloc[idx]
         copy_owners = set().union(*map(set, sub.copy_owner_list))
-        terms = [w for w, _ in (topic_model.get_topic(t) or [])]
+        ctfidf = [w for w, _ in (topic_model.get_topic(t) or [])]
+        top_owner_share = sub.owner.value_counts(normalize=True).iloc[0]
         rows.append({"topic": t, "n_functions": len(idx), "owners": sub.owner.nunique(),
+                     "top_owner_share": float(top_owner_share), "terms": owner_terms(owner_words.iloc[idx]),
+                     "terms_ctfidf": ctfidf,
                      "repos": sub.repo.nunique(), "owners_incl_copias": len(copy_owners),
                      "n_copias_total": int(sub.n_copies.sum()),
                      "domains": sub.drop_duplicates("owner").domain.value_counts().to_dict(),
-                     "cohesion": float(sim[idx].mean()), "terms": terms})
+                     "cohesion": float(sim[idx].mean())})
     fn["sim_centroid"] = sim
     fn[["fid", "topic", "sim_centroid"]].to_parquet(ASSIGN)
     cl = pd.DataFrame(rows).sort_values(["owners", "n_functions"], ascending=False)
