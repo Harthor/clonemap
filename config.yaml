@@ -53,9 +53,9 @@ cluster:
   umap_n_neighbors: 15
   umap_n_components: 5
   prefilter: auto                   # on | off | auto (si hay más de prefilter_auto_above funciones)
-  prefilter_auto_above: 300000
+  prefilter_auto_above: 600000      # ~470k x 256-d entra en RAM; el prefiltro solo si hace falta
   knn_k: 30
-  knn_sim: 0.80
+  knn_sim: 0.60                     # calibrado en el piloto: 0,80 perdía el 92 % de los clusters grandes
   knn_min_other_owners: 2
 
 report:

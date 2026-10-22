@@ -21,7 +21,7 @@ from datetime import date, timedelta
 import pandas as pd
 import requests
 
-from common import GitHub, cache_dir, gapfinder_conn, load_config, out_dir, stage
+from common import ROOT, GitHub, cache_dir, gapfinder_conn, load_config, out_dir, stage
 
 cfg = load_config()
 S = cfg["selection"]
@@ -210,9 +210,11 @@ with stage(cfg, "s1_select", [CAND, SEL]) as st:
                          if not c["edu"] and not c["paper"]]
     for d in queues:
         rng.shuffle(queues[d])
-    # En el piloto se evalúan primero los repos ya seleccionados antes (clones y embeddings cacheados)
-    if cfg["mode"] == "pilot" and SEL.exists():
-        prev = set(pd.read_parquet(SEL).repo.str.lower())
+    # Se evalúan primero los repos ya seleccionados en el piloto (clones y embeddings cacheados);
+    # el piloto es una muestra aleatoria del mismo pool, así que no sesga la selección.
+    PILOT_SEL = ROOT / cfg["paths"]["data"] / "pilot" / "s1_selected.parquet"
+    if PILOT_SEL.exists():
+        prev = set(pd.read_parquet(PILOT_SEL).repo.str.lower())
         for d in queues:
             queues[d].sort(key=lambda c: c["repo"].lower() in prev)  # estable: los previos al final (pop)
 
