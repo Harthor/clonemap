@@ -79,6 +79,10 @@ class GitHub:
         return False
 
     def search_repos(self, q: str, page: int) -> dict:
+        wait = 2.05 - (time.time() - getattr(self, "_last_search", 0))  # 30 req/min contando la latencia
+        if wait > 0:
+            time.sleep(wait)
+        self._last_search = time.time()
         while True:
             r = self.s.get("https://api.github.com/search/repositories",
                            params={"q": q, "per_page": 100, "page": page, "sort": "stars"}, timeout=60)
@@ -86,7 +90,6 @@ class GitHub:
                 break
         r.raise_for_status()
         print(f"  search p{page}: {q}")
-        time.sleep(2.1)  # 30 req/min
         return r.json()
 
     def graphql(self, query: str) -> dict | None:

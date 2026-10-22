@@ -1,8 +1,9 @@
-"""Etapa 1: selección de repos (apps, no librerías) en tres dominios: django, llm, etl.
+"""Etapa 1: selección de repos (apps, no librerías) en los dominios de config (django, llm).
 
 Fuentes de candidatos:
   - corpus de gapfinder (solo lectura): repos Python activos con keyword de dominio.
-  - GitHub Search API (stars>=N) para completar django y etl, que en el corpus no alcanzan.
+  - GitHub Search API (stars>=N) para ampliar cada dominio más allá del corpus (casi todo >=100 estrellas).
+Se excluyen repos de papers (arXiv/BibTeX en el README).
 Después, en orden aleatorio con seed y por tandas, GraphQL trae metadata + archivos de dependencias,
 se chequea PyPI y se aplican los filtros hasta cubrir la cuota de cada dominio.
 
@@ -36,7 +37,6 @@ QUOTAS = cfg["pilot"]["quotas"] if cfg["mode"] == "pilot" else {d: S["target_per
 KW = {
     "django": re.compile(r"\bdjango\b"),
     "llm": re.compile(r"\b(openai|anthropic|langchain|langgraph|litellm|llama.?index|gpt-?4o?|chatgpt|claude|llms?|ollama|rag)\b"),
-    "etl": re.compile(r"\b(etl|elt|airflow|dagster|prefect|luigi|data.?pipelines?|dbt|dlt)\b"),
 }
 # Material didáctico. En nombre/descripción se es amplio; en el README solo frases fuertes.
 EDU_NAME = re.compile(
@@ -56,10 +56,13 @@ DEPS = {
             "langgraph", "litellm", "llama-index", "llama-index-core", "ollama", "google-generativeai",
             "google-genai", "mistralai", "cohere", "groq", "instructor", "dspy", "dspy-ai", "crewai",
             "pyautogen", "autogen-agentchat", "pydantic-ai", "openai-agents", "smolagents", "haystack-ai"},
-    "etl": {"apache-airflow", "airflow", "dagster", "prefect", "luigi", "dbt-core", "dlt", "mage-ai", "kedro",
-            "meltano", "pyspark", "apache-beam", "bonobo", "petl"},
 }
-DOMAIN_PRIORITY = ["etl", "django", "llm"]  # si hay varios, gana el más escaso
+DOMAIN_PRIORITY = ["django", "llm"]  # si hay varios, gana el más escaso
+# Código de papers / benchmarks: no son apps
+PAPER_README = re.compile(
+    r"(arxiv\.org|arxiv:\s*\d{4}\.\d+|@(inproceedings|article|misc|software)\s*\{|bibtex|"
+    r"official (pytorch |jax |tensorflow )?(code|implementation)|our paper|"
+    r"accepted (at|to|by) (neurips|iclr|icml|acl|emnlp|naacl|cvpr|iccv|eccv|aaai|kdd|sigir|colm))", re.I)
 
 PY_BYTES_PER_LINE = 35  # estimación gruesa: bytes de Python reportados por GitHub / líneas
 
@@ -113,7 +116,7 @@ def cput(ns, k, v):
 
 
 gh = GitHub(cfg)
-NS = "gql2"  # namespace de caché de la consulta GraphQL actual
+NS = "gql3"  # namespace de caché de la consulta GraphQL actual
 
 
 def search_all(base_q: str) -> list[dict]:
@@ -142,7 +145,7 @@ def search_all(base_q: str) -> list[dict]:
         out.extend(items)
 
     for sr in star_ranges:
-        run(sr, lo_date, date.today())
+        run(sr, lo_date, date.fromisoformat(S["snapshot_date"]))
     return out
 
 
@@ -167,9 +170,10 @@ with stage(cfg, "s1_select", [CAND, SEL]) as st:
 
     # 2. Complemento por Search API
     searches = {"django": ["django"],
-                "etl": ["etl OR elt OR airflow OR dagster OR prefect", 'luigi OR dbt OR "data pipeline" OR dlt']}
+                "llm": [f"llm OR openai OR anthropic OR langchain OR chatgpt created:>={S['llm_created_after']}",
+                        f"litellm OR ollama OR rag OR gpt OR claude created:>={S['llm_created_after']}"]}
     n_search = 0
-    for dom, qs in searches.items():
+    for dom, qs in ((d, q) for d, q in searches.items() if d in S["domains"]):
         for q in qs:
             for it in search_all(q):
                 key = it["full_name"].lower()
@@ -188,22 +192,29 @@ with stage(cfg, "s1_select", [CAND, SEL]) as st:
     for c in pool.values():
         name = c["repo"].split("/")[1]
         c["edu"] = bool(EDU_NAME.search(f"{name} {c['desc']}") or EDU_README.search(c["readme"]))
+        c["paper"] = bool(PAPER_README.search(c["readme"]))
     F["descartados_didactico_prefetch"] = sum(c["edu"] for c in pool.values())
+    F["descartados_paper_prefetch"] = sum(c["paper"] and not c["edu"] for c in pool.values())
 
     # 4. Orden aleatorio por dominio y evaluación por tandas hasta cubrir cuotas
     queues = {d: [] for d in S["domains"]}
     for c in sorted(pool.values(), key=lambda c: c["repo"].lower()):
-        if not c["edu"]:
+        if not c["edu"] and not c["paper"]:
             for d in c["kw_domains"]:
                 queues[d].append(c)
     for d in queues:
         rng.shuffle(queues[d])
+    # En el piloto se evalúan primero los repos ya seleccionados antes (clones y embeddings cacheados)
+    if cfg["mode"] == "pilot" and SEL.exists():
+        prev = set(pd.read_parquet(SEL).repo.str.lower())
+        for d in queues:
+            queues[d].sort(key=lambda c: c["repo"].lower() in prev)  # estable: los previos al final (pop)
 
     GQL_FIELDS = """nameWithOwner isFork isArchived pushedAt createdAt stargazerCount
       primaryLanguage { name }
       languages(first: 10, orderBy: {field: SIZE, direction: DESC}) { edges { size node { name } } }
       defaultBranchRef { name target { oid } }
-      root: object(expression: "HEAD:") { ... on Tree { entries { name type object { ... on Tree { entries { name type } } } } } }
+      root: object(expression: "HEAD:") { ... on Tree { entries { name type } } }
       req: object(expression: "HEAD:requirements.txt") { ... on Blob { text } }
       pyproject: object(expression: "HEAD:pyproject.toml") { ... on Blob { text } }
       setuppy: object(expression: "HEAD:setup.py") { ... on Blob { text } }
@@ -252,7 +263,7 @@ with stage(cfg, "s1_select", [CAND, SEL]) as st:
     def fetch_subdeps(repos_meta: dict):
         todo = [(r, sub_dep_paths(m)) for r, m in repos_meta.items()
                 if not m.get("missing") and not any((m.get(k) or {}).get("text") for k in ROOT_DEPS)
-                and cget(NS + "_sub", r.lower()) is None]
+                and cget(NS + "_sub", r.lower()) is None and cget("gql2_sub", r.lower()) is None]
         for r, paths in todo:
             if not paths:
                 cput(NS + "_sub", r.lower(), {})
@@ -271,14 +282,36 @@ with stage(cfg, "s1_select", [CAND, SEL]) as st:
                 cput(NS + "_sub", r.lower(), {p: ((v.get(f"f{k}") or {}).get("text") or "")[:20000]
                                               for k, p in enumerate(paths)})
 
+    TREE_Q = 'root: object(expression: "HEAD:") { ... on Tree { entries { name type object { ... on Tree { entries { name type } } } } } }'
+
+    def fetch_trees(metas: dict):
+        """Árbol de un nivel solo para repos sin dependencias en la raíz (la consulta anidada para todos da 502)."""
+        need = [r for r, m in metas.items() if not m.get("missing")
+                and not any((m.get(k) or {}).get("text") for k in ROOT_DEPS)
+                and not any("object" in e for e in (m.get("root") or {}).get("entries") or [])
+                and cget(NS + "_tree", r.lower()) is None]
+        for i in range(0, len(need), 10):
+            chunk = need[i:i + 10]
+            parts = [f"r{j}: repository(owner: {json.dumps(r.split('/', 1)[0])}, name: {json.dumps(r.split('/', 1)[1])}) {{ {TREE_Q} }}"
+                     for j, r in enumerate(chunk)]
+            data = (gh.graphql("query {" + "\n".join(parts) + "}") or {}).get("data") or {}
+            for j, r in enumerate(chunk):
+                cput(NS + "_tree", r.lower(), ((data.get(f"r{j}") or {}).get("root")) or {})
+        for r, m in metas.items():
+            tree = cget(NS + "_tree", r.lower())
+            if tree:
+                m["root"] = tree
+
     def fetch_meta(repos: list[str]) -> dict:
-        todo = [r for r in repos if cget(NS, r.lower()) is None]
+        # gql2 = caché del piloto anterior (con árbol anidado para todos); sigue sirviendo
+        todo = [r for r in repos if cget(NS, r.lower()) is None and cget("gql2", r.lower()) is None]
         for i in range(0, len(todo), 15):
             fetch_chunk(todo[i:i + 15])
-        metas = {r: cget(NS, r.lower()) for r in repos}
+        metas = {r: cget(NS, r.lower()) or cget("gql2", r.lower()) for r in repos}
+        fetch_trees(metas)
         fetch_subdeps(metas)
         for r, m in metas.items():
-            m["sub"] = cget(NS + "_sub", r.lower()) or {}
+            m["sub"] = cget(NS + "_sub", r.lower()) or cget("gql2_sub", r.lower()) or {}
         return metas
 
     def pypi_exists(pkg: str, repo: str) -> bool:
@@ -320,6 +353,8 @@ with stage(cfg, "s1_select", [CAND, SEL]) as st:
         readme = (m.get("readme") or {}).get("text") or ""
         if EDU_README.search(readme):
             return "didactico_readme", info
+        if PAPER_README.search(readme):
+            return "paper_readme", info
         texts = {k: (m.get(k) or {}).get("text") for k in ROOT_DEPS}
         pkg = declared_package(texts)  # solo paquetes declarados en la raíz
         if not any(texts.values()) and m["sub"]:

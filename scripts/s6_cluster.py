@@ -3,6 +3,7 @@
 Prefiltro kNN opcional (FAISS): solo pasan funciones con al menos `knn_min_other_owners` vecinos de
 OTROS owners con similitud coseno >= `knn_sim`. Una función sin vecinos de otros owners no puede
 terminar en un cluster con muchos owners, y así UMAP entra en 8 GB de RAM.
+Especificidad de dominio por cluster: fracción de owners en el dominio mayoritario (+ base y p binomial).
 Términos: identificadores partidos (snake_case / camelCase) ponderados por owners distintos x idf entre
 clusters; también se guarda el c-TF-IDF de BERTopic (terms_ctfidf), que tiende a reflejar al owner dominante.
 Salidas: data/<modo>/s6_assign.parquet (fid, topic, sim_centroide), data/<modo>/s6_clusters.parquet
@@ -16,6 +17,7 @@ import numpy as np
 import pandas as pd
 from bertopic import BERTopic
 from hdbscan import HDBSCAN
+from scipy.stats import binomtest
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
@@ -109,6 +111,12 @@ with stage(cfg, "s6_cluster", [ASSIGN, CLUSTERS]) as st:
         score = {w: c / len(per_owner) * np.log(n_topics / word_clusters[w]) for w, c in cnt.items() if c >= 2}
         return [w for w, _ in sorted(score.items(), key=lambda kv: -kv[1])[:k]]
 
+    # Especificidad de dominio: fracción de los owners del cluster que está en su dominio mayoritario.
+    # Se guarda también la base (fracción de ese dominio entre todos los owners) y un test binomial
+    # unilateral, porque con dominios desbalanceados el dominio grande "gana" por azar.
+    owner_dom = fn.drop_duplicates("owner").set_index("owner").domain
+    dom_base = owner_dom.value_counts(normalize=True).to_dict()
+
     for t, idx in fn.groupby("topic").indices.items():  # índices posicionales sobre fn completo
         if t < 0:
             continue
@@ -119,13 +127,18 @@ with stage(cfg, "s6_cluster", [ASSIGN, CLUSTERS]) as st:
         copy_owners = set().union(*map(set, sub.copy_owner_list))
         ctfidf = [w for w, _ in (topic_model.get_topic(t) or [])]
         top_owner_share = sub.owner.value_counts(normalize=True).iloc[0]
+        dcounts = owner_dom.loc[sub.owner.unique()].value_counts()
+        dmain, dn = dcounts.index[0], int(dcounts.iloc[0])
+        n_own = int(dcounts.sum())
         rows.append({"topic": t, "n_functions": len(idx), "owners": sub.owner.nunique(),
                      "top_owner_share": float(top_owner_share), "terms": owner_terms(owner_words.iloc[idx]),
                      "terms_ctfidf": ctfidf,
                      "repos": sub.repo.nunique(), "owners_incl_copias": len(copy_owners),
                      "n_copias_total": int(sub.n_copies.sum()),
                      "domains": sub.drop_duplicates("owner").domain.value_counts().to_dict(),
-                     "cohesion": float(sim[idx].mean())})
+                     "cohesion": float(sim[idx].mean()),
+                     "domain_main": dmain, "domain_share": dn / n_own, "domain_base": dom_base[dmain],
+                     "domain_p": float(binomtest(dn, n_own, dom_base[dmain], alternative="greater").pvalue)})
     fn["sim_centroid"] = sim
     fn[["fid", "topic", "sim_centroid"]].to_parquet(ASSIGN)
     cl = pd.DataFrame(rows).sort_values(["owners", "n_functions"], ascending=False)
@@ -137,3 +150,6 @@ with stage(cfg, "s6_cluster", [ASSIGN, CLUSTERS]) as st:
     F["funciones_ruido"] = int((fn.topic < 0).sum())
     for m in (3, 5, 8, 15):
         F[f"clusters_con_>={m}_owners"] = int((cl.owners >= m).sum())
+    spec = cl[(cl.owners >= 8) & (cl.domain_share >= cfg["report"]["specific_min_share"])]
+    for d, n in spec.domain_main.value_counts().items():
+        F[f"clusters_>=8_owners_especificos:{d}"] = int(n)

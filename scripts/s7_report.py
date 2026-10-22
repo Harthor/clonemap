@@ -1,10 +1,13 @@
-"""Etapa 7: reporte HTML estático local.
+"""Etapa 7: reporte HTML estático local, en dos vistas que se linkean entre sí.
 
-Top K clusters ordenados por OWNERS DISTINTOS (con código distinto: las copias cuentan una vez),
-con mínimo `min_owners`. Por cluster: términos c-TF-IDF, conteos y 3–5 funciones de owners distintos,
-las más cercanas al centroide, con código y link a GitHub en el commit exacto.
-Incluye un resumen con conteos, tiempo y disco por etapa. No interpreta: es material para revisar a mano.
-Salida: data/<modo>/report.html
+- report.html: top K clusters por OWNERS DISTINTOS (con código distinto: las copias cuentan una vez),
+  mínimo `min_owners`.
+- report_dominio.html: clusters específicos de un dominio (fracción de owners en el dominio mayoritario
+  >= `specific_min_share`) con >= `specific_min_owners` owners, agrupados por dominio y ordenados por owners.
+Por cluster: términos, conteos, especificidad de dominio y 3–5 funciones de owners distintos, las más
+cercanas al centroide, con código y link a GitHub en el commit exacto. Más un resumen con conteos,
+tiempo y disco por etapa. No interpreta: es material para revisar a mano.
+Salidas: data/<modo>/report.html, data/<modo>/report_dominio.html
 Uso: uv run scripts/s7_report.py [--mode pilot|full]
 """
 import html
@@ -18,13 +21,12 @@ from common import load_config, out_dir
 cfg = load_config()
 R = cfg["report"]
 OUT = out_dir(cfg)
-DST = OUT / "report.html"
+VIEWS = {"owners": OUT / "report.html", "dominio": OUT / "report_dominio.html"}
 MAX_CODE_LINES = 60
 
 fn = pd.read_parquet(OUT / "s4_functions.parquet").merge(pd.read_parquet(OUT / "s6_assign.parquet"), on="fid")
 cl = pd.read_parquet(OUT / "s6_clusters.parquet")
 stats = json.loads((OUT / "stats.json").read_text())
-top = cl[cl.owners >= R["min_owners"]].sort_values(["owners", "cohesion"], ascending=False).head(R["top_k"])
 e = html.escape
 
 
@@ -54,7 +56,8 @@ def cluster_section(rank: int, c) -> str:
         <span><b>{c.n_functions}</b> variantes</span><span><b>{c.n_copias_total}</b> funciones incl. copias</span>
         <span><b>{c.owners_incl_copias}</b> owners incl. copias</span><span>cohesión {c.cohesion:.2f}</span>
         <span>owner con más funciones: {c.top_owner_share:.0%}</span></div>
-      <div class="muted">owners por dominio: {e(doms)}</div>
+      <div class="muted">owners por dominio: {e(doms)} · especificidad <b>{c.domain_share:.0%} {c.domain_main}</b>
+        (base {c.domain_base:.0%}, p={c.domain_p:.2g})</div>
       <div class="terms">{terms}</div>
       <details open><summary>Funciones representativas (owners distintos, más cercanas al centroide)</summary>
       {examples(c.topic)}</details></section>"""
@@ -69,33 +72,63 @@ def stats_table() -> str:
     return "\n".join(rows)
 
 
-index = "".join(f'<li><a href="#c{c.topic}">#{i} · {c.owners} owners · {e(", ".join(list(c.terms)[:5]))}</a></li>'
-                for i, c in enumerate(top.itertuples(), 1))
-body = "\n".join(cluster_section(i, c) for i, c in enumerate(top.itertuples(), 1))
-page = f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>clonemap — {cfg['mode']}</title>
-<style>
-:root {{ --bg:#fbfbfa; --fg:#1d1d1b; --muted:#6b6b66; --line:#e3e2dd; --code:#f2f1ec; --acc:#2f5d8a; }}
-@media (prefers-color-scheme: dark) {{ :root {{ --bg:#161615; --fg:#e8e6e1; --muted:#9a988f; --line:#2c2b29; --code:#1f1e1c; --acc:#8db4dd; }} }}
-body {{ background:var(--bg); color:var(--fg); font:15px/1.5 system-ui,-apple-system,sans-serif; max-width:1100px; margin:0 auto; padding:24px 16px; }}
-a {{ color:var(--acc); }} h1 {{ margin:0 0 4px; }} h2 {{ margin:0 0 8px; font-size:18px; }}
-.muted {{ color:var(--muted); font-size:13px; }} .mono {{ font-family:ui-monospace,Menlo,monospace; font-size:13px; }}
-.cluster {{ border-top:1px solid var(--line); padding:20px 0; }}
-.kpis {{ display:flex; flex-wrap:wrap; gap:14px; margin-bottom:4px; }}
-.terms {{ margin:8px 0; }} .term {{ display:inline-block; background:var(--code); border-radius:4px; padding:1px 7px; margin:2px; font-family:ui-monospace,Menlo,monospace; font-size:13px; }}
-.ex {{ margin:12px 0; }} .exh {{ font-size:13px; margin-bottom:4px; overflow-wrap:anywhere; }}
-pre {{ background:var(--code); padding:10px 12px; border-radius:6px; overflow-x:auto; font-size:12.5px; line-height:1.4; margin:0; }}
-table {{ border-collapse:collapse; margin:6px 0 10px; }} td {{ border-bottom:1px solid var(--line); padding:2px 10px; font-size:13px; }}
-.num {{ text-align:right; font-variant-numeric:tabular-nums; }} summary {{ cursor:pointer; }}
-ol {{ columns:2; font-size:13px; }} @media (max-width:700px) {{ ol {{ columns:1; }} }}
-</style></head><body>
+CSS = """<style>
+:root { --bg:#fbfbfa; --fg:#1d1d1b; --muted:#6b6b66; --line:#e3e2dd; --code:#f2f1ec; --acc:#2f5d8a; }
+@media (prefers-color-scheme: dark) { :root { --bg:#161615; --fg:#e8e6e1; --muted:#9a988f; --line:#2c2b29; --code:#1f1e1c; --acc:#8db4dd; } }
+body { background:var(--bg); color:var(--fg); font:15px/1.5 system-ui,-apple-system,sans-serif; max-width:1100px; margin:0 auto; padding:24px 16px; }
+a { color:var(--acc); } h1 { margin:0 0 4px; } h2 { margin:0 0 8px; font-size:18px; }
+.muted { color:var(--muted); font-size:13px; } .mono { font-family:ui-monospace,Menlo,monospace; font-size:13px; }
+.cluster { border-top:1px solid var(--line); padding:20px 0; }
+.kpis { display:flex; flex-wrap:wrap; gap:14px; margin-bottom:4px; }
+.terms { margin:8px 0; } .term { display:inline-block; background:var(--code); border-radius:4px; padding:1px 7px; margin:2px; font-family:ui-monospace,Menlo,monospace; font-size:13px; }
+.ex { margin:12px 0; } .exh { font-size:13px; margin-bottom:4px; overflow-wrap:anywhere; }
+pre { background:var(--code); padding:10px 12px; border-radius:6px; overflow-x:auto; font-size:12.5px; line-height:1.4; margin:0; }
+table { border-collapse:collapse; margin:6px 0 10px; } td { border-bottom:1px solid var(--line); padding:2px 10px; font-size:13px; }
+.num { text-align:right; font-variant-numeric:tabular-nums; } summary { cursor:pointer; }
+ol { columns:2; font-size:13px; } @media (max-width:700px) { ol { columns:1; } }
+</style>"""
+
+def render(view: str, sections: list[tuple[str, pd.DataFrame]], intro: str) -> int:
+    nav = " · ".join(f'<a href="{p.name}">{"por owners" if v == "owners" else "por dominio"}</a>'
+                     if v != view else f'<b>{"por owners" if v == "owners" else "por dominio"}</b>'
+                     for v, p in VIEWS.items())
+    index, body, rank = [], [], 0
+    for title, df in sections:
+        if title:
+            index.append(f"<h4>{e(title)} ({len(df)})</h4>")
+            body.append(f"<h3>{e(title)}</h3>")
+        items = []
+        for c in df.itertuples():
+            rank += 1
+            items.append(f'<li><a href="#c{c.topic}">#{rank} · {c.owners} owners · {e(", ".join(list(c.terms)[:5]))}</a></li>')
+            body.append(cluster_section(rank, c))
+        index.append(f"<ol start='{rank - len(df) + 1}'>{''.join(items)}</ol>")
+    page = f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>clonemap — {cfg['mode']} — {view}</title>
+CSS</head><body>
 <h1>clonemap · {cfg['mode']}</h1>
-<p class="muted">Generado {datetime.now():%Y-%m-%d %H:%M}. Clusters de funciones con intención parecida y código distinto,
-ordenados por owners distintos (mínimo {R['min_owners']}). Es material para revisión manual: un cluster no implica que falte una librería.
-Cohesión = similitud coseno media al centroide (entre dos funciones al azar es ~0,23). Términos = identificadores usados por muchos owners del cluster y por pocos otros clusters.</p>
+<p>Vista: {nav}</p>
+<p class="muted">Generado {datetime.now():%Y-%m-%d %H:%M}. Clusters de funciones con intención parecida y código distinto.
+{intro} Es material para revisión manual: un cluster no implica que falte una librería.
+Cohesión = similitud coseno media al centroide (entre dos funciones al azar es ~0,23). Términos = identificadores usados por muchos
+owners del cluster y por pocos otros clusters. Especificidad = fracción de los owners del cluster que está en su dominio mayoritario;
+"base" es la fracción de ese dominio entre todos los owners, y p el test binomial de que la especificidad supere a la base por azar.</p>
 <h3>Resumen por etapa</h3>{stats_table()}
-<h3>Top {len(top)} clusters</h3><ol>{index}</ol>
-{body}
+<h3>Índice</h3>{''.join(index)}
+{''.join(body)}
 </body></html>"""
-DST.write_text(page)
-print(f"reporte: {DST} ({len(top)} clusters)")
+    VIEWS[view].write_text(page.replace("CSS", CSS, 1))
+    return rank
+
+
+by_owners = cl[cl.owners >= R["min_owners"]].sort_values(["owners", "cohesion"], ascending=False).head(R["top_k"])
+n1 = render("owners", [("", by_owners)], f"Ordenados por owners distintos (mínimo {R['min_owners']}).")
+
+spec = cl[(cl.owners >= R["specific_min_owners"]) & (cl.domain_share >= R["specific_min_share"])]
+per_dom = max(1, R["top_k"] // max(1, spec.domain_main.nunique()))
+sections = [(f"Específicos de {d}", spec[spec.domain_main == d].sort_values(["owners", "cohesion"], ascending=False).head(per_dom))
+            for d in cfg["selection"]["domains"]]
+n2 = render("dominio", sections,
+            f"Solo clusters con especificidad de dominio ≥ {R['specific_min_share']:.0%} y ≥ {R['specific_min_owners']} owners, "
+            f"agrupados por dominio (hasta {per_dom} por dominio) y ordenados por owners distintos.")
+print(f"reporte: {VIEWS['owners']} ({n1} clusters), {VIEWS['dominio']} ({n2} clusters)")

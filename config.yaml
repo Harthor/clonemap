@@ -9,17 +9,18 @@ paths:
 
 selection:
   pushed_after: "2024-10-21"        # último push en los últimos 2 años
+  snapshot_date: "2026-10-21"       # fin fijo de las ventanas de búsqueda (reproducible y cacheable)
   llm_created_after: "2024-01-01"
   target_per_domain: 1750           # meta 1.500–2.000
-  domains: [django, llm, etl]
+  domains: [django, llm]           # ETL fuera (22-oct)
   min_py_lines: 2000
   max_py_lines: 50000
-  supplement_min_stars: 3           # para completar Django vía GitHub Search (el corpus no alcanza)
+  supplement_min_stars: 3           # Search API para django y llm (el corpus es casi todo >=100 estrellas)
 
 mode: pilot                         # pilot | full (también --mode). Salidas en data/<modo>/
 
 pilot:
-  quotas: {django: 70, llm: 100, etl: 30}   # 200 repos
+  quotas: {django: 70, llm: 130}    # 200 repos
   overrides:                        # con 200 repos casi no hay clusters de 8 owners
     cluster: {min_cluster_size: 5, min_samples: 3}
     report: {min_owners: 3}
@@ -29,7 +30,7 @@ download:
   timeout_s: 300
 
 parse:
-  min_nonblank_lines: 6
+  min_nonblank_lines: 10            # subido de 6 (22-oct)
   template_file_min_repos: 5        # un archivo idéntico en >=N repos se trata como template
   workers: 6
 
@@ -60,3 +61,5 @@ report:
   top_k: 50
   min_owners: 8
   examples_per_cluster: 5
+  specific_min_share: 0.8           # vista por dominio: fracción de owners en el dominio mayoritario
+  specific_min_owners: 8

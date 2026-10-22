@@ -69,3 +69,52 @@ Notas:
 1. **Volumen:** ¿aceptamos ~2.600 repos, o ampliamos LLM con la Search API (stars ≥3, como Django) y/o bajamos el mínimo de 2k a ~1k líneas?
 2. **Código de papers en LLM:** el 42 % de los repos LLM del piloto tiene arXiv o BibTeX en el README (benchmarks, implementaciones de papers). No son "apps que usan LLMs". ¿Los excluyo con esos marcadores?
 3. **Embeddings:** ¿corre de noche con 256 tokens, o subo el mínimo a 10 líneas no vacías (−25 % de funciones, −25 % de tiempo)?
+
+---
+
+# Cambios del 22-oct y piloto regenerado
+
+Pedidos aplicados:
+1. **Especificidad de dominio por cluster** (`domain_share`): fracción de sus owners en el dominio mayoritario. Para cada cluster se guarda también la base (fracción de ese dominio entre todos los owners) y un p binomial unilateral. Hay una segunda vista, `data/pilot/report_dominio.html`, con los clusters de especificidad ≥80 % y ≥8 owners, agrupados por dominio y ordenados por owners. Las dos vistas se linkean entre sí; la vista por owners (`report.html`) no cambió.
+2. **Mínimo de 10 líneas no vacías** por función (antes 6).
+3. **Repos de papers excluidos** (arXiv, BibTeX, "official implementation", "accepted at <conferencia>" en el README), en todos los dominios. **LLM ampliado con la Search API** (estrellas ≥3, creados desde 2024), igual que Django.
+4. **ETL fuera.**
+5. Se mantiene el mínimo de 2k líneas por repo; no se busca llegar a 5k.
+6. **Etapa 1:** el árbol de carpetas se pide solo para los repos sin dependencias en la raíz.
+
+Ajustes técnicos que hice para no re-embeddear ni re-buscar:
+- **Caché de embeddings por contenido** (sha1 del código) en `data/cache/emb/codet5p-110m-embedding-256/`, compartida entre el piloto y la corrida completa. Migré los 39.643 vectores del piloto anterior.
+- **En el piloto, los repos ya seleccionados antes se evalúan primero:** se reusaron 122 de 200, con sus clones y embeddings.
+- **Fecha de corte fija** de la búsqueda (`snapshot_date: 2026-10-21`): al cambiar de día se había invalidado la caché de búsqueda. Además, la pausa entre requests ahora descuenta la latencia de la respuesta.
+
+## Piloto regenerado
+
+| Etapa | Tiempo | Notas |
+|---|---|---|
+| 1 Selección | 63 min | casi todo es la búsqueda LLM (~850 páginas), que corre una sola vez y queda cacheada; pool 71.362 → 840 evaluados → 200 (70 Django, 130 LLM); 92 descartados por paper |
+| 2 Descarga | 0,5 min | 122 clones reusados, 78 nuevos; 181 MB |
+| 3 Parseo | 6 s | 30.457 funciones de ≥10 líneas (148 por repo) |
+| 4 Copias | 6 s | 29.653 representantes |
+| 5 Embeddings | 6,8 min | 18.268 de la caché, 11.385 nuevos (28 fn/s) |
+| 6 Clustering | 35 s | 1.480 clusters; 214 con ≥8 owners; específicos con ≥8 owners: 16 de Django y 142 de LLM |
+
+## Ojo con la vista por dominio
+
+**El umbral fijo del 80 % favorece a LLM**, que es el 65 % de los owners. Los clusters "específicos de LLM" de arriba incluyen utilidades genéricas, como `main()` con argparse, setup de logging o carga de YAML: superan el 80 % porque la mayoría de los repos son LLM, no por algo propio del dominio. El p binomial las distingue en parte (algunas dan p≈0,03–0,05), pero no del todo. Los 16 de Django sí son propios del dominio: management commands, activación por email, backends de autenticación, forms y vistas de error. Opciones, si querés:
+(a) ordenar o filtrar esa vista por p (por ejemplo, p<0,01) o por lift (especificidad/base) en vez de por especificidad cruda;
+(b) equilibrar la corrida completa con la misma cuota para los dos dominios.
+
+## Extrapolación de la corrida completa
+
+- **Django:** pool ~5.900 × 19 % de rendimiento (el del primer piloto; el de este está inflado porque se evaluaron primero los repos previos) ≈ **1.100**.
+- **LLM:** pool ~55.000; sobra para la cuota de **1.750**.
+- **Total ≈ 2.850 repos × 148 funciones ≈ 420k funciones.** Se activa el prefiltro kNN (está configurado para más de 300k).
+
+| Etapa | Estimación |
+|---|---|
+| 1 Selección (~15.500 evaluaciones; la búsqueda ya está cacheada) | ~2,5 h |
+| 2 Descarga | ~20 min · ~2,6 GB |
+| 3 + 4 | ~5 min · ~0,4 GB |
+| 5 Embeddings (~390k nuevas a ~27 fn/s) | **~4 h** |
+| 6 Clustering con prefiltro kNN | ~30–45 min |
+| **Total** | **~7,5–8 h · ~3,5 GB** |
