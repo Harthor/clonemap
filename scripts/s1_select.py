@@ -104,6 +104,7 @@ def declared_package(texts: dict) -> str | None:
 
 # --- cachés de APIs (compartidas entre pilot y full) -------------------------------------------
 cache = sqlite3.connect(cache_dir(cfg) / "api_cache.sqlite")
+cache.execute("PRAGMA journal_mode=WAL")  # más tolerante a cortes en seco (un reinicio corrompió la caché)
 cache.execute("CREATE TABLE IF NOT EXISTS kv (ns TEXT, k TEXT, v TEXT, PRIMARY KEY (ns, k))")
 
 
