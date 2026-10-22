@@ -31,7 +31,9 @@ if SEL.exists() and not cfg["force"]:
     print(f"ya existe {SEL}; usar --force para rehacer")
     raise SystemExit
 
-QUOTAS = cfg["pilot"]["quotas"] if cfg["mode"] == "pilot" else {d: S["target_per_domain"] for d in S["domains"]}
+QUOTAS = dict(cfg["pilot"]["quotas"]) if cfg["mode"] == "pilot" else {d: S["target_per_domain"] for d in S["domains"]}
+QUOTAS["control"] = S["control_n"]
+GROUPS = S["domains"] + ["control"]  # control: Python cualquiera, sin dependencias de los dominios
 
 # --- keywords -------------------------------------------------------------------------------
 KW = {
@@ -159,13 +161,13 @@ with stage(cfg, "s1_select", [CAND, SEL]) as st:
         """SELECT substr(id, 8), title, description, coalesce(readme,''), created_at, stars
            FROM items WHERE source='github' AND json_extract(extra,'$.language')='Python'
            AND archived=0 AND last_activity_at >= ?""", (S["pushed_after"],)).fetchall()
-    pool = {}
+    pool, control_pool = {}, {}
     for full, title, desc, readme, created, stars in rows:
         text = f"{title} {desc} {readme}".lower()
         kw = [d for d in S["domains"] if KW[d].search(text) and (d != "llm" or created >= S["llm_created_after"])]
-        if kw:
-            pool[full.lower()] = dict(repo=full, src="corpus", kw_domains=kw, desc=desc, readme=readme,
-                                      stars=stars, created_at=created)
+        cand = dict(repo=full, src="corpus", kw_domains=kw, desc=desc, readme=readme, stars=stars, created_at=created)
+        # Control: repos del corpus sin ninguna keyword de dominio (las dependencias se verifican después)
+        (pool if kw else control_pool)[full.lower()] = cand
     F["pool_corpus_python_activo_con_keyword"] = len(pool)
 
     # 2. Complemento por Search API
@@ -187,9 +189,11 @@ with stage(cfg, "s1_select", [CAND, SEL]) as st:
                                  created_at=it["created_at"])
     F["pool_search_nuevos"] = n_search
     F["pool_total"] = len(pool)
+    control_pool = {k: c for k, c in control_pool.items() if k not in pool}
+    F["pool_control_corpus_sin_keyword"] = len(control_pool)
 
     # 3. Filtro didáctico (nombre/descripción/README truncado del corpus)
-    for c in pool.values():
+    for c in [*pool.values(), *control_pool.values()]:
         name = c["repo"].split("/")[1]
         c["edu"] = bool(EDU_NAME.search(f"{name} {c['desc']}") or EDU_README.search(c["readme"]))
         c["paper"] = bool(PAPER_README.search(c["readme"]))
@@ -197,11 +201,13 @@ with stage(cfg, "s1_select", [CAND, SEL]) as st:
     F["descartados_paper_prefetch"] = sum(c["paper"] and not c["edu"] for c in pool.values())
 
     # 4. Orden aleatorio por dominio y evaluación por tandas hasta cubrir cuotas
-    queues = {d: [] for d in S["domains"]}
+    queues = {d: [] for d in GROUPS}
     for c in sorted(pool.values(), key=lambda c: c["repo"].lower()):
         if not c["edu"] and not c["paper"]:
             for d in c["kw_domains"]:
                 queues[d].append(c)
+    queues["control"] = [c for c in sorted(control_pool.values(), key=lambda c: c["repo"].lower())
+                         if not c["edu"] and not c["paper"]]
     for d in queues:
         rng.shuffle(queues[d])
     # En el piloto se evalúan primero los repos ya seleccionados antes (clones y embeddings cacheados)
@@ -331,10 +337,10 @@ with stage(cfg, "s1_select", [CAND, SEL]) as st:
             return False
         return f"github.com/{repo.lower()}" in v["urls"] or key == norm_pkg(repo.split("/")[1])
 
-    seen_owners, selected, evaluated = set(), {d: [] for d in S["domains"]}, []
+    seen_owners, selected, evaluated = set(), {d: [] for d in GROUPS}, []
     lo, hi = S["min_py_lines"] * PY_BYTES_PER_LINE, S["max_py_lines"] * PY_BYTES_PER_LINE
 
-    def evaluate(c: dict) -> tuple[str, dict]:
+    def evaluate(c: dict, queue: str) -> tuple[str, dict]:
         m = c["meta"]
         if m.get("missing"):
             return "no_accesible", {}
@@ -381,10 +387,15 @@ with stage(cfg, "s1_select", [CAND, SEL]) as st:
             doms.remove("llm")
         if not doms and not any(texts.values()):
             return "sin_archivos_de_dependencias", info
-        if not doms:
+        if queue == "control":
+            if doms:
+                return "control_con_dependencia_de_dominio", info
+            info["domains"], info["domain"] = [], "control"
+        elif not doms:
             return "sin_dependencia_de_dominio", info
-        info["domains"] = doms
-        info["domain"] = next(d for d in DOMAIN_PRIORITY if d in doms)
+        else:
+            info["domains"] = doms
+            info["domain"] = next(d for d in DOMAIN_PRIORITY if d in doms)
         info["sha"] = m["defaultBranchRef"]["target"]["oid"] if m.get("defaultBranchRef") else None
         if not info["sha"]:
             return "sin_rama_default", info
@@ -392,7 +403,7 @@ with stage(cfg, "s1_select", [CAND, SEL]) as st:
 
     BATCH = 40
     while True:
-        open_doms = [d for d in S["domains"] if len(selected[d]) < QUOTAS.get(d, 0) and queues[d]]
+        open_doms = [d for d in GROUPS if len(selected[d]) < QUOTAS.get(d, 0) and queues[d]]
         if not open_doms:
             break
         batch = []
@@ -412,7 +423,7 @@ with stage(cfg, "s1_select", [CAND, SEL]) as st:
             if owner in seen_owners:
                 status, info = "owner_repetido", {}
             else:
-                status, info = evaluate(c)
+                status, info = evaluate(c, d)
             if status == "ok":
                 dom = info["domain"]
                 if len(selected[dom]) >= QUOTAS.get(dom, 0):

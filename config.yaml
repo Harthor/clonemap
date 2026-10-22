@@ -12,6 +12,7 @@ selection:
   snapshot_date: "2026-10-21"       # fin fijo de las ventanas de búsqueda (reproducible y cacheable)
   llm_created_after: "2024-01-01"
   target_per_domain: 1750           # meta 1.500–2.000
+  control_n: 300                    # grupo control: Python del corpus sin Django ni LLM en dependencias
   domains: [django, llm]           # ETL fuera (22-oct)
   min_py_lines: 2000
   max_py_lines: 50000
@@ -61,5 +62,7 @@ report:
   top_k: 50
   min_owners: 8
   examples_per_cluster: 5
-  specific_min_share: 0.8           # vista por dominio: fracción de owners en el dominio mayoritario
-  specific_min_owners: 8
+  specific_min_owners: 8            # vista por dominio: owners de dominio (sin control)
+  max_q: 0.05                       # q de Benjamini-Hochberg
+  laplace_alpha: 1
+  generic_min_ctrl_prev: 0.03       # "genérico": >= 3 % de los owners de control aparecen en el cluster

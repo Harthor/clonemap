@@ -118,3 +118,19 @@ Ajustes técnicos que hice para no re-embeddear ni re-buscar:
 | 5 Embeddings (~390k nuevas a ~27 fn/s) | **~4 h** |
 | 6 Clustering con prefiltro kNN | ~30–45 min |
 | **Total** | **~7,5–8 h · ~3,5 GB** |
+
+---
+
+# Vista por dominio con enriquecimiento, BH y grupo control (22-oct)
+
+- **Enriquecimiento** = fracción suavizada con Laplace (α=1) de los owners del cluster en el dominio ÷ base del dominio (incluye al control en la base). La vista por dominio se ordena por esto.
+- **q** = p binomial corregido por Benjamini-Hochberg sobre los clusters con ≥8 owners de dominio. La vista filtra q<0,05 y ≥8 owners.
+- **Grupo control:** 300 repos Python del corpus de gapfinder, sin keyword de dominio y con los mismos filtros de app. Se verificó que no tuvieran Django ni LLM en las dependencias (22 descartados por eso). Pasan por las etapas 2–6 junto con los de dominio.
+- **"Genérico"** = el cluster aparece en ≥3 % de los repos de control (`generic_min_ctrl_prev`). Mi primera regla (cociente dominio/control <2) no marcaba argparse, logging ni YAML, porque en LLM aparecen 2,2–2,7 veces más que en el control. Los genéricos se listan aparte, no se borran.
+- **Comparación** del top 20 por dominio con los criterios A (antes), B (enriquecimiento + BH sin control) y C (con control): `docs/comparacion_dominio.md` (se genera con `scripts/compare_domain_view.py`).
+
+**Sesgos a tener en cuenta:**
+- **Estrellas:** el control sale del corpus (mediana de 258 estrellas); los repos de dominio vienen mayormente de la Search API (≥3 estrellas).
+- **Base de LLM:** al sumar el control, baja del 65 % al 26 %, así que pasan más clusters LLM (120 vs 56 sin control). El filtro de genéricos compensa en parte.
+
+**Costo extra del control en la corrida completa:** ~25 min en la Etapa 1 y ~30 min de embeddings (unas 45 mil funciones, que ya quedaron cacheadas del piloto si se reusa el mismo control).

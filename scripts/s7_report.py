@@ -2,9 +2,10 @@
 
 - report.html: top K clusters por OWNERS DISTINTOS (con código distinto: las copias cuentan una vez),
   mínimo `min_owners`.
-- report_dominio.html: clusters específicos de un dominio (fracción de owners en el dominio mayoritario
-  >= `specific_min_share`) con >= `specific_min_owners` owners, agrupados por dominio y ordenados por owners.
-Por cluster: términos, conteos, especificidad de dominio y 3–5 funciones de owners distintos, las más
+- report_dominio.html: clusters enriquecidos en un dominio (q de Benjamini-Hochberg < `max_q`) con
+  >= `specific_min_owners` owners de dominio, agrupados por dominio y ordenados por enriquecimiento
+  (ver domain_stats.py). Los marcados como "genéricos" por el grupo control van en una sección aparte.
+Por cluster: términos, conteos, estadísticas de dominio y 3–5 funciones de owners distintos, las más
 cercanas al centroide, con código y link a GitHub en el commit exacto. Más un resumen con conteos,
 tiempo y disco por etapa. No interpreta: es material para revisar a mano.
 Salidas: data/<modo>/report.html, data/<modo>/report_dominio.html
@@ -51,13 +52,14 @@ def cluster_section(rank: int, c) -> str:
     doms = " · ".join(f"{k}: {int(v)}" for k, v in sorted(((k, v) for k, v in c.domains.items() if v), key=lambda kv: -kv[1]))
     terms = " ".join(f'<span class="term">{e(t)}</span>' for t in c.terms)
     return f"""<section class="cluster" id="c{c.topic}">
-      <h2>#{rank} · cluster {c.topic}</h2>
-      <div class="kpis"><span><b>{c.owners}</b> owners distintos</span><span><b>{c.repos}</b> repos</span>
+      <h2>#{rank} · cluster {c.topic}{' <span class="tag">genérico</span>' if c.generic else ''}</h2>
+      <div class="kpis"><span><b>{c.owners}</b> owners de dominio</span><span><b>{c.owners_control}</b> de control</span><span><b>{c.repos}</b> repos</span>
         <span><b>{c.n_functions}</b> variantes</span><span><b>{c.n_copias_total}</b> funciones incl. copias</span>
         <span><b>{c.owners_incl_copias}</b> owners incl. copias</span><span>cohesión {c.cohesion:.2f}</span>
         <span>owner con más funciones: {c.top_owner_share:.0%}</span></div>
-      <div class="muted">owners por dominio: {e(doms)} · especificidad <b>{c.domain_share:.0%} {c.domain_main}</b>
-        (base {c.domain_base:.0%}, p={c.domain_p:.2g})</div>
+      <div class="muted">owners por grupo: {e(doms)} · <b>{c.domain_main}</b>: enriquecimiento <b>×{c.enrichment:.2f}</b>
+        (fracción {c.domain_share:.0%} vs base {c.domain_base:.0%}, p={c.domain_p:.2g}, q={"—" if pd.isna(c.domain_q) else f"{c.domain_q:.2g}"})
+        · vs control ×{c.enr_vs_control:.2f} (en {c.control_prev:.0%} del control)</div>
       <div class="terms">{terms}</div>
       <details open><summary>Funciones representativas (owners distintos, más cercanas al centroide)</summary>
       {examples(c.topic)}</details></section>"""
@@ -84,6 +86,7 @@ a { color:var(--acc); } h1 { margin:0 0 4px; } h2 { margin:0 0 8px; font-size:18
 .ex { margin:12px 0; } .exh { font-size:13px; margin-bottom:4px; overflow-wrap:anywhere; }
 pre { background:var(--code); padding:10px 12px; border-radius:6px; overflow-x:auto; font-size:12.5px; line-height:1.4; margin:0; }
 table { border-collapse:collapse; margin:6px 0 10px; } td { border-bottom:1px solid var(--line); padding:2px 10px; font-size:13px; }
+.tag { font-size:12px; font-weight:normal; background:var(--code); border:1px solid var(--line); border-radius:4px; padding:1px 6px; }
 .num { text-align:right; font-variant-numeric:tabular-nums; } summary { cursor:pointer; }
 ol { columns:2; font-size:13px; } @media (max-width:700px) { ol { columns:1; } }
 </style>"""
@@ -111,8 +114,11 @@ CSS</head><body>
 <p class="muted">Generado {datetime.now():%Y-%m-%d %H:%M}. Clusters de funciones con intención parecida y código distinto.
 {intro} Es material para revisión manual: un cluster no implica que falte una librería.
 Cohesión = similitud coseno media al centroide (entre dos funciones al azar es ~0,23). Términos = identificadores usados por muchos
-owners del cluster y por pocos otros clusters. Especificidad = fracción de los owners del cluster que está en su dominio mayoritario;
-"base" es la fracción de ese dominio entre todos los owners, y p el test binomial de que la especificidad supere a la base por azar.</p>
+owners del cluster y por pocos otros clusters. Enriquecimiento = fracción suavizada (Laplace) de los owners del cluster en el dominio
+dividida por la base (fracción de ese dominio entre todos los owners, incluido el control); p = test binomial unilateral; q = p corregido
+por Benjamini-Hochberg. "vs control" = prevalencia en el dominio / prevalencia en ~300 repos Python sin Django ni LLM; "genérico" =
+el cluster aparece en ≥ {R['generic_min_ctrl_prev']:.0%} de los repos de control (se listan aparte, no se borran).
+El control sale del corpus de gapfinder (casi todo ≥100 estrellas); los repos de dominio, mayormente de la Search API.</p>
 <h3>Resumen por etapa</h3>{stats_table()}
 <h3>Índice</h3>{''.join(index)}
 {''.join(body)}
@@ -124,11 +130,15 @@ owners del cluster y por pocos otros clusters. Especificidad = fracción de los 
 by_owners = cl[cl.owners >= R["min_owners"]].sort_values(["owners", "cohesion"], ascending=False).head(R["top_k"])
 n1 = render("owners", [("", by_owners)], f"Ordenados por owners distintos (mínimo {R['min_owners']}).")
 
-spec = cl[(cl.owners >= R["specific_min_owners"]) & (cl.domain_share >= R["specific_min_share"])]
-per_dom = max(1, R["top_k"] // max(1, spec.domain_main.nunique()))
-sections = [(f"Específicos de {d}", spec[spec.domain_main == d].sort_values(["owners", "cohesion"], ascending=False).head(per_dom))
-            for d in cfg["selection"]["domains"]]
+spec = cl[(cl.owners >= R["specific_min_owners"]) & (cl.domain_q < R["max_q"])]
+doms = cfg["selection"]["domains"]
+per_dom = max(1, R["top_k"] // len(doms))
+order = ["enrichment", "owners"]
+sections = [(f"Enriquecidos en {d}", spec[(spec.domain_main == d) & ~spec.generic].sort_values(order, ascending=False).head(per_dom))
+            for d in doms]
+sections.append(("Marcados como genéricos (presencia alta en el grupo control)",
+                 spec[spec.generic].sort_values(order, ascending=False).head(per_dom)))
 n2 = render("dominio", sections,
-            f"Solo clusters con especificidad de dominio ≥ {R['specific_min_share']:.0%} y ≥ {R['specific_min_owners']} owners, "
-            f"agrupados por dominio (hasta {per_dom} por dominio) y ordenados por owners distintos.")
+            f"Solo clusters con ≥ {R['specific_min_owners']} owners de dominio y enriquecimiento significativo (q < {R['max_q']}), "
+            f"agrupados por dominio (hasta {per_dom} por grupo) y ordenados por enriquecimiento.")
 print(f"reporte: {VIEWS['owners']} ({n1} clusters), {VIEWS['dominio']} ({n2} clusters)")
