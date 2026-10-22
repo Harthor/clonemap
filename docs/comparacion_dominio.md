@@ -6,8 +6,8 @@
 |---|---|---|---|---|
 | A | especificidad ≥80 %, ≥8 owners, orden por owners | 158 | 16 | 142 |
 | B | enriquecimiento + q<0.05 (mismo clustering que A) | 73 | 17 | 56 |
-| C | B + grupo control, sin genéricos (clustering nuevo) | 114 | 16 | 98 |
-| C′ | marcados como genéricos por el control | 23 | 1 | 22 |
+| C | B + grupo control, sin genéricos (clustering nuevo) | 115 | 16 | 99 |
+| C′ | marcados como genéricos por el control | 22 | 1 | 21 |
 
 ## Dónde quedan los clusters utilitarios
 
@@ -16,7 +16,7 @@
 | A | 1 en el top 20 (#2); 1 en total | 4 en el top 20 (#1, #4, #6, #13); 8 en total |
 | B | 1 en el top 20 (#13); 1 en total | 2 en el top 20 (#15, #16); 5 en total |
 | C | 1 en el top 20 (#3); 1 en total | 0 en el top 20 (—); 2 en total |
-| C′ genéricos | 0 en el top 20 (—); 0 en total | 3 en el top 20 (#9, #10, #13); 3 en total |
+| C′ genéricos | 0 en el top 20 (—); 0 en total | 3 en el top 20 (#8, #9, #12); 3 en total |
 
 ## django
 
@@ -171,23 +171,23 @@
 
 | # | owners | owners_control | enrichment | domain_q | enr_vs_control | términos |
 |---|---|---|---|---|---|---|
-| 1 | 43 | 9 | ×2.79 | 8e-12 | ×9.12 | vector, collection, query, score, embedding, embeddings |
-| 2 | 26 | 13 | ×2.38 | 4e-06 | ×4.23 | env, dotenv, environ, vars, splitlines, startswith |
-| 3 | 39 | 23 | ×2.30 | 7e-08 | ×3.71 | report, markdown, summary, lines, results, render |
-| 4 | 16 | 11 | ×2.05 | 0.002 | ×3.04 | read, unicode, encoding, file, iowrapper, decode |
-| 5 | 21 | 14 | ×2.02 | 0.0008 | ×3.04 | conn, sqlite3, commit, executescript, execute, database |
-| 6 | 22 | 19 | ×2.01 | 0.0004 | ×2.62 | corsmiddleware, fast, origins, middleware, methods, lifespan |
-| 7 | 15 | 9 | ×1.99 | 0.005 | ×3.19 | fetch, headers, url, html, beautiful, jina |
-| 8 | 17 | 11 | ×1.98 | 0.003 | ×3.04 | fromisoformat, expires, unknown, used, any, datetime |
-| 9 | 28 | 22 | ×1.96 | 0.0002 | ×2.68 | main, argparse, argument, help, parser, sys **[util]** |
-| 10 | 30 | 28 | ×1.89 | 0.0002 | ×2.36 | yaml, load, safe, config, open, exists **[util]** |
-| 11 | 18 | 12 | ×1.86 | 0.007 | ×2.81 | clean, sub, replacements, strip, splitlines, text |
-| 12 | 16 | 13 | ×1.80 | 0.01 | ×2.44 | validate, config, provider, asr, api, slack |
-| 13 | 37 | 37 | ×1.79 | 0.0002 | ×2.16 | formatter, logging, handlers, level, handler, datefmt **[util]** |
-| 14 | 10 | 9 | ×1.74 | 0.05 | ×2.28 | pretrained, model, transformer, device, load, transformers |
-| 15 | 15 | 11 | ×1.72 | 0.03 | ×2.47 | lines, headings, line, blocks, sections, heading |
-| 16 | 12 | 12 | ×1.71 | 0.04 | ×2.10 | resolved, resolve, relative, absolute, posix, root |
-| 17 | 13 | 9 | ×1.69 | 0.05 | ×2.51 | migrations, migrate, migration, conn, schema, execute |
-| 18 | 11 | 11 | ×1.69 | 0.05 | ×2.09 | banner, welcome, logo, console, style, display |
-| 19 | 16 | 20 | ×1.67 | 0.02 | ×1.85 | subprocess, stderr, returncode, stdout, cwd, pipe |
-| 20 | 33 | 19 | ×1.61 | 0.01 | ×2.62 | evidence, reason, expires, severity, started, score |
+| 1 | 26 | 13 | ×2.38 | 4e-06 | ×4.23 | env, dotenv, environ, vars, splitlines, startswith |
+| 2 | 39 | 23 | ×2.30 | 7e-08 | ×3.71 | report, markdown, summary, lines, results, render |
+| 3 | 16 | 11 | ×2.05 | 0.002 | ×3.04 | read, unicode, encoding, file, iowrapper, decode |
+| 4 | 21 | 14 | ×2.02 | 0.0008 | ×3.04 | conn, sqlite3, commit, executescript, execute, database |
+| 5 | 22 | 19 | ×2.01 | 0.0004 | ×2.62 | corsmiddleware, fast, origins, middleware, methods, lifespan |
+| 6 | 15 | 9 | ×1.99 | 0.005 | ×3.19 | fetch, headers, url, html, beautiful, jina |
+| 7 | 17 | 11 | ×1.98 | 0.003 | ×3.04 | fromisoformat, expires, unknown, used, any, datetime |
+| 8 | 28 | 22 | ×1.96 | 0.0002 | ×2.68 | main, argparse, argument, help, parser, sys **[util]** |
+| 9 | 30 | 28 | ×1.89 | 0.0002 | ×2.36 | yaml, load, safe, config, open, exists **[util]** |
+| 10 | 18 | 12 | ×1.86 | 0.007 | ×2.81 | clean, sub, replacements, strip, splitlines, text |
+| 11 | 16 | 13 | ×1.80 | 0.01 | ×2.44 | validate, config, provider, asr, api, slack |
+| 12 | 37 | 37 | ×1.79 | 0.0002 | ×2.16 | formatter, logging, handlers, level, handler, datefmt **[util]** |
+| 13 | 10 | 9 | ×1.74 | 0.05 | ×2.28 | pretrained, model, transformer, device, load, transformers |
+| 14 | 15 | 11 | ×1.72 | 0.03 | ×2.47 | lines, headings, line, blocks, sections, heading |
+| 15 | 12 | 12 | ×1.71 | 0.04 | ×2.10 | resolved, resolve, relative, absolute, posix, root |
+| 16 | 13 | 9 | ×1.69 | 0.05 | ×2.51 | migrations, migrate, migration, conn, schema, execute |
+| 17 | 11 | 11 | ×1.69 | 0.05 | ×2.09 | banner, welcome, logo, console, style, display |
+| 18 | 16 | 20 | ×1.67 | 0.02 | ×1.85 | subprocess, stderr, returncode, stdout, cwd, pipe |
+| 19 | 33 | 19 | ×1.61 | 0.01 | ×2.62 | evidence, reason, expires, severity, started, score |
+| 20 | 16 | 18 | ×1.56 | 0.05 | ×1.80 | daemon, stop, shutdown, threading, port, thread |

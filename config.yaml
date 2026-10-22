@@ -66,3 +66,4 @@ report:
   max_q: 0.05                       # q de Benjamini-Hochberg
   laplace_alpha: 1
   generic_min_ctrl_prev: 0.03       # "genérico": >= 3 % de los owners de control aparecen en el cluster
+  generic_max_enr_ctrl: 5.0         #   y además enriquecimiento vs control < este valor

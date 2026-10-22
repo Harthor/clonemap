@@ -126,7 +126,7 @@ Ajustes técnicos que hice para no re-embeddear ni re-buscar:
 - **Enriquecimiento** = fracción suavizada con Laplace (α=1) de los owners del cluster en el dominio ÷ base del dominio (incluye al control en la base). La vista por dominio se ordena por esto.
 - **q** = p binomial corregido por Benjamini-Hochberg sobre los clusters con ≥8 owners de dominio. La vista filtra q<0,05 y ≥8 owners.
 - **Grupo control:** 300 repos Python del corpus de gapfinder, sin keyword de dominio y con los mismos filtros de app. Se verificó que no tuvieran Django ni LLM en las dependencias (22 descartados por eso). Pasan por las etapas 2–6 junto con los de dominio.
-- **"Genérico"** = el cluster aparece en ≥3 % de los repos de control (`generic_min_ctrl_prev`). Mi primera regla (cociente dominio/control <2) no marcaba argparse, logging ni YAML, porque en LLM aparecen 2,2–2,7 veces más que en el control. Los genéricos se listan aparte, no se borran.
+- **"Genérico"** = el cluster aparece en ≥3 % de los repos de control (`generic_min_ctrl_prev`) **y** su cociente vs control es <×5 (`generic_max_enr_ctrl`, agregado el 22-oct). Con esa segunda condición en el piloto sale de genéricos solo el cluster de búsqueda vectorial (43 owners de dominio, 9 de control, ×9,1), que pasa al puesto #32 de LLM. El siguiente más cerca del corte es dotenv (×4,2). Mi primera regla (cociente dominio/control <2) no marcaba argparse, logging ni YAML, porque en LLM aparecen 2,2–2,7 veces más que en el control. Los genéricos se listan aparte, no se borran.
 - **Comparación** del top 20 por dominio con los criterios A (antes), B (enriquecimiento + BH sin control) y C (con control): `docs/comparacion_dominio.md` (se genera con `scripts/compare_domain_view.py`).
 
 **Sesgos a tener en cuenta:**

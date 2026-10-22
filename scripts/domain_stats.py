@@ -7,8 +7,9 @@ Por cluster, con n = owners del cluster (dominios + control) y k_d = owners del 
   >= `specific_min_owners` owners de dominio (la familia que se filtra en el reporte).
 - enriquecimiento vs control = prevalencia en d / prevalencia en el grupo control, ambas suavizadas:
   (k_d + a) / (N_d + 2a)  ÷  (k_ctrl + a) / (N_ctrl + 2a).
-- genérico = presencia alta en el control: fracción de los owners de control que aparecen en el cluster
-  >= `generic_min_ctrl_prev` (se marca, no se borra; el cociente vs control queda como dato).
+- genérico = presencia alta en el control (fracción de los owners de control que aparecen en el cluster
+  >= `generic_min_ctrl_prev`) y además enriquecimiento vs control < `generic_max_enr_ctrl`.
+  Se marca, no se borra.
 """
 import numpy as np
 import pandas as pd
@@ -40,7 +41,8 @@ def score_clusters(members: pd.DataFrame, owner_domain: pd.Series, R: dict, doma
             prev = lambda d: (k[d] + a) / (N[d] + 2 * a)
             row["enr_vs_control"] = prev(main) / prev(CONTROL)
             row["control_prev"] = k[CONTROL] / N[CONTROL]
-            row["generic"] = bool(row["control_prev"] >= R["generic_min_ctrl_prev"])
+            row["generic"] = bool(row["control_prev"] >= R["generic_min_ctrl_prev"]
+                                  and row["enr_vs_control"] < R["generic_max_enr_ctrl"])
         else:
             row["enr_vs_control"], row["control_prev"], row["generic"] = np.nan, np.nan, False
         rows.append(row)

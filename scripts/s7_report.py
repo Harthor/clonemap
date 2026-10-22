@@ -117,7 +117,8 @@ Cohesión = similitud coseno media al centroide (entre dos funciones al azar es 
 owners del cluster y por pocos otros clusters. Enriquecimiento = fracción suavizada (Laplace) de los owners del cluster en el dominio
 dividida por la base (fracción de ese dominio entre todos los owners, incluido el control); p = test binomial unilateral; q = p corregido
 por Benjamini-Hochberg. "vs control" = prevalencia en el dominio / prevalencia en ~300 repos Python sin Django ni LLM; "genérico" =
-el cluster aparece en ≥ {R['generic_min_ctrl_prev']:.0%} de los repos de control (se listan aparte, no se borran).
+el cluster aparece en ≥ {R['generic_min_ctrl_prev']:.0%} de los repos de control y su cociente vs control es
+&lt; ×{R['generic_max_enr_ctrl']:g} (se listan aparte, no se borran).
 El control sale del corpus de gapfinder (casi todo ≥100 estrellas); los repos de dominio, mayormente de la Search API.</p>
 <h3>Resumen por etapa</h3>{stats_table()}
 <h3>Índice</h3>{''.join(index)}
