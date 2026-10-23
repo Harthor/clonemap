@@ -21,22 +21,20 @@
 <meta name="twitter:description" content="In regular Python projects it&#x27;s 4%. A library for this exists (json_repair); only 2% of those apps use it. A look at what projects keep rewriting, across 3,075 GitHub projects.">
 <meta name="twitter:image" content="https://harthor.github.io/clonemap/og.png">
 <!-- /static:head -->
+<meta name="color-scheme" content="dark light">
+<script>try { if (localStorage.getItem("clonemap-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (e) {}</script>
 <style>
-:root {
-  --bg: #fafaf8; --surface: #ffffff; --fg: #1b1b19; --muted: #6a6963; --line: #e5e3dd; --soft: #f2f1ec;
-  --accent: #1f5fae; --accent-soft: #e8eff8;
+:root {  /* oscuro por defecto, para todos */
+  color-scheme: dark;
+  --bg: #141413; --surface: #1c1c1a; --fg: #ecebe6; --muted: #a09e96; --line: #2f2e2b; --soft: #232321;
+  --accent: #7fb0eb; --accent-soft: #1f2a37;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #141413; --surface: #1c1c1a; --fg: #ecebe6; --muted: #a09e96; --line: #2f2e2b; --soft: #232321;
-    --accent: #7fb0eb; --accent-soft: #1f2a37;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #141413; --surface: #1c1c1a; --fg: #ecebe6; --muted: #a09e96; --line: #2f2e2b; --soft: #232321;
-  --accent: #7fb0eb; --accent-soft: #1f2a37;
+:root[data-theme="light"] {  /* claro solo si el visitante lo elige con el botón */
+  color-scheme: light;
+  --bg: #fafaf8; --surface: #ffffff; --fg: #1b1b19; --muted: #6a6963; --line: #e5e3dd; --soft: #f2f1ec;
+  --accent: #1f5fae; --accent-soft: #e8eff8;
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -49,6 +47,9 @@ code, pre { font-family: var(--mono); }
 .top { display: flex; align-items: center; gap: 20px; padding: 22px 0 0; flex-wrap: wrap; }
 .brand { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
 .tabs { display: flex; gap: 2px; margin-left: auto; }
+.theme-toggle { font: inherit; font-size: 14px; background: none; border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; color: var(--muted); cursor: pointer; }
+.theme-toggle:hover { color: var(--fg); border-color: var(--muted); }
+.theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tabs a { font-size: 15px; border-bottom: 2px solid transparent; padding: 6px 10px; color: var(--muted); text-decoration: none; }
 .tabs a[aria-current="page"] { color: var(--fg); border-color: var(--accent); }
 .tabs a:focus-visible, .help:focus-visible, tbody tr:focus-visible, .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -145,7 +146,8 @@ footer { border-top: 1px solid var(--line); margin-top: 72px; padding: 24px 0 48
   section.block { margin: 56px 0; }
   .numbers { grid-template-columns: 1fr; gap: 16px; }
   .flow, .compare { grid-template-columns: 1fr; }
-  .tabs { margin-left: 0; width: 100%; }
+  .tabs { margin-left: 0; width: 100%; order: 3; }
+  .theme-toggle { margin-left: auto; }
   table, thead, tbody, tr, td { display: block; width: 100%; }
   thead { display: none; }
   table { border: 0; background: none; }
@@ -170,6 +172,7 @@ footer { border-top: 1px solid var(--line); margin-top: 72px; padding: 24px 0 48
       <a href="#findings" data-panel="findings" aria-current="page">Findings</a>
       <a href="#method" data-panel="method">Method</a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle" hidden>Light mode</button>
   </div>
 
   <main>
@@ -451,6 +454,20 @@ function showPanel() {
 let firstRender = true;
 window.addEventListener("hashchange", showPanel);
 showPanel();
+const themeBtn = document.getElementById("theme-toggle");
+function syncThemeButton() {
+  const light = document.documentElement.dataset.theme === "light";
+  themeBtn.textContent = light ? "Dark mode" : "Light mode";
+  themeBtn.setAttribute("aria-pressed", String(light));
+}
+themeBtn.hidden = false;
+syncThemeButton();
+themeBtn.addEventListener("click", () => {
+  const light = document.documentElement.dataset.theme !== "light";
+  if (light) document.documentElement.dataset.theme = "light"; else delete document.documentElement.dataset.theme;
+  try { localStorage.setItem("clonemap-theme", light ? "light" : "dark"); } catch (e) {}
+  syncThemeButton();
+});
 document.getElementById("thead").replaceChildren(...COLUMNS.map(([t, h], i) => el("th", { class: i === 2 || i === 3 ? "num" : "" }, t, help(h))));
 document.getElementById("d-close").addEventListener("click", () => document.getElementById("detail").close());
 document.getElementById("detail").addEventListener("click", e => { if (e.target.id === "detail") e.target.close(); });
