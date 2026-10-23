@@ -52,14 +52,14 @@ def cluster_section(rank: int, c) -> str:
     doms = " · ".join(f"{k}: {int(v)}" for k, v in sorted(((k, v) for k, v in c.domains.items() if v), key=lambda kv: -kv[1]))
     terms = " ".join(f'<span class="term">{e(t)}</span>' for t in c.terms)
     return f"""<section class="cluster" id="c{c.topic}">
-      <h2>#{rank} · cluster {c.topic}{' <span class="tag">genérico</span>' if c.generic else ''}</h2>
+      <h2>#{rank} · cluster {c.topic}{' <span class="tag">genérico</span>' if c.generic else ''}{' <span class="tag">idiomático del framework</span>' if c.framework else ''}</h2>
       <div class="kpis"><span><b>{c.owners}</b> owners de dominio</span><span><b>{c.owners_control}</b> de control</span><span><b>{c.repos}</b> repos</span>
         <span><b>{c.n_functions}</b> variantes</span><span><b>{c.n_copias_total}</b> funciones incl. copias</span>
         <span><b>{c.owners_incl_copias}</b> owners incl. copias</span><span>cohesión {c.cohesion:.2f}</span>
         <span>owner con más funciones: {c.top_owner_share:.0%}</span></div>
-      <div class="muted">owners por grupo: {e(doms)} · <b>{c.domain_main}</b>: enriquecimiento <b>×{c.enrichment:.2f}</b>
-        (fracción {c.domain_share:.0%} vs base {c.domain_base:.0%}, p={c.domain_p:.2g}, q={"—" if pd.isna(c.domain_q) else f"{c.domain_q:.2g}"})
-        · vs control ×{c.enr_vs_control:.2f} (en {c.control_prev:.0%} del control)</div>
+      <div class="muted">owners por grupo: {e(doms)} · <b>{c.domain_main}</b>: enriquecimiento vs control <b>×{c.enrichment:.2f}</b>
+        (en {c.domain_prev:.1%} de los repos {c.domain_main} vs {c.control_prev:.1%} del control; p={c.domain_p:.2g},
+        q={"—" if pd.isna(c.domain_q) else f"{c.domain_q:.2g}"}) · métodos de clases base de Django/DRF: {c.framework_frac:.0%}</div>
       <div class="terms">{terms}</div>
       <details open><summary>Funciones representativas (owners distintos, más cercanas al centroide)</summary>
       {examples(c.topic)}</details></section>"""
@@ -114,11 +114,12 @@ CSS</head><body>
 <p class="muted">Generado {datetime.now():%Y-%m-%d %H:%M}. Clusters de funciones con intención parecida y código distinto.
 {intro} Es material para revisión manual: un cluster no implica que falte una librería.
 Cohesión = similitud coseno media al centroide (entre dos funciones al azar es ~0,23). Términos = identificadores usados por muchos
-owners del cluster y por pocos otros clusters. Enriquecimiento = fracción suavizada (Laplace) de los owners del cluster en el dominio
-dividida por la base (fracción de ese dominio entre todos los owners, incluido el control); p = test binomial unilateral; q = p corregido
-por Benjamini-Hochberg. "vs control" = prevalencia en el dominio / prevalencia en ~300 repos Python sin Django ni LLM; "genérico" =
-el cluster aparece en ≥ {R['generic_min_ctrl_prev']:.0%} de los repos de control y su cociente vs control es
-&lt; ×{R['generic_max_enr_ctrl']:g} (se listan aparte, no se borran).
+owners del cluster y por pocos otros clusters. Enriquecimiento = fracción de los repos del dominio que aparecen en el cluster dividida
+por la fracción de los repos de control (~300 repos Python sin Django ni LLM) que aparecen, con Laplace en los dos lados; se cuenta por
+repos, no por funciones. p = Fisher exacto unilateral sobre esa misma comparación; q = p corregido por Benjamini-Hochberg sobre los
+clusters con ≥ {R['specific_min_owners']} owners del dominio. "Genérico" = el cluster aparece en ≥ {R['generic_min_ctrl_prev']:.0%}
+de los repos de control y su enriquecimiento es &lt; ×{R['generic_max_enr_ctrl']:g}. "Idiomático del framework" = ≥ {R['framework_min_frac']:.0%}
+de sus funciones son métodos de clases que heredan directamente de clases base de Django/DRF/Channels (por AST). Ambos se listan aparte, no se borran.
 El control sale del corpus de gapfinder (casi todo ≥100 estrellas); los repos de dominio, mayormente de la Search API.</p>
 <h3>Resumen por etapa</h3>{stats_table()}
 <h3>Índice</h3>{''.join(index)}
@@ -131,15 +132,24 @@ El control sale del corpus de gapfinder (casi todo ≥100 estrellas); los repos 
 by_owners = cl[cl.owners >= R["min_owners"]].sort_values(["owners", "cohesion"], ascending=False).head(R["top_k"])
 n1 = render("owners", [("", by_owners)], f"Ordenados por owners distintos (mínimo {R['min_owners']}).")
 
-spec = cl[(cl.owners >= R["specific_min_owners"]) & (cl.domain_q < R["max_q"])]
-doms = cfg["selection"]["domains"]
-per_dom = max(1, R["top_k"] // len(doms))
-order = ["enrichment", "owners"]
-sections = [(f"Enriquecidos en {d}", spec[(spec.domain_main == d) & ~spec.generic].sort_values(order, ascending=False).head(per_dom))
-            for d in doms]
-sections.append(("Marcados como genéricos (presencia alta en el grupo control)",
-                 spec[spec.generic].sort_values(order, ascending=False).head(per_dom)))
-n2 = render("dominio", sections,
-            f"Solo clusters con ≥ {R['specific_min_owners']} owners de dominio y enriquecimiento significativo (q < {R['max_q']}), "
-            f"agrupados por dominio (hasta {per_dom} por grupo) y ordenados por enriquecimiento.")
-print(f"reporte: {VIEWS['owners']} ({n1} clusters), {VIEWS['dominio']} ({n2} clusters)")
+def domain_sections(cl: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """Sección de cada cluster en la vista por dominio (completa, sin cortar en top N).
+    Precedencia: framework > genérico > dominio principal."""
+    spec = cl[(cl.owners_main >= R["specific_min_owners"]) & (cl.domain_q < R["max_q"])]
+    order = ["enrichment", "owners"]
+    out = {f"Enriquecidos en {d}": spec[(spec.domain_main == d) & ~spec.generic & ~spec.framework]
+           for d in cfg["selection"]["domains"]}
+    out["Idiomáticos del framework (métodos de clases base de Django/DRF)"] = spec[spec.framework]
+    out["Marcados como genéricos (presencia alta en el grupo control)"] = spec[spec.generic & ~spec.framework]
+    return {k: v.sort_values(order, ascending=False) for k, v in out.items()}
+
+
+if __name__ == "__main__":
+    by_owners = cl[cl.owners >= R["min_owners"]].sort_values(["owners", "cohesion"], ascending=False).head(R["top_k"])
+    n1 = render("owners", [("", by_owners)], f"Ordenados por owners distintos (mínimo {R['min_owners']}).")
+    secs = domain_sections(cl)
+    per_sec = max(1, R["top_k"] // len(cfg["selection"]["domains"]))
+    n2 = render("dominio", [(t, df.head(per_sec)) for t, df in secs.items()],
+                f"Solo clusters con ≥ {R['specific_min_owners']} owners del dominio principal y enriquecimiento significativo "
+                f"contra el control (q < {R['max_q']}), por sección (hasta {per_sec} por sección) y ordenados por enriquecimiento.")
+    print(f"reporte: {VIEWS['owners']} ({n1} clusters), {VIEWS['dominio']} ({n2} clusters)")

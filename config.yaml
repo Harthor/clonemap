@@ -62,8 +62,9 @@ report:
   top_k: 50
   min_owners: 8
   examples_per_cluster: 5
-  specific_min_owners: 8            # vista por dominio: owners de dominio (sin control)
+  specific_min_owners: 8            # vista por dominio: owners del dominio principal
   max_q: 0.05                       # q de Benjamini-Hochberg
   laplace_alpha: 1
   generic_min_ctrl_prev: 0.03       # "genérico": >= 3 % de los owners de control aparecen en el cluster
   generic_max_enr_ctrl: 5.0         #   y además enriquecimiento vs control < este valor
+  framework_min_frac: 0.6           # "idiomático del framework": >= 60 % métodos de clases base de Django/DRF

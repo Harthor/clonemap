@@ -3,8 +3,8 @@
 Prefiltro kNN opcional (FAISS): solo pasan funciones con al menos `knn_min_other_owners` vecinos de
 OTROS owners con similitud coseno >= `knn_sim`. Una función sin vecinos de otros owners no puede
 terminar en un cluster con muchos owners, y así UMAP entra en 8 GB de RAM.
-Dominio por cluster (domain_stats.py): enriquecimiento con Laplace vs base, q de Benjamini-Hochberg,
-enriquecimiento vs grupo control y marca de "genérico". `owners` cuenta solo owners de dominio (sin control).
+Dominio por cluster (domain_stats.py): enriquecimiento vs grupo control (Laplace), q de Fisher + BH y marca de
+"genérico". `owners` cuenta solo owners de dominio (sin control). La marca de framework la agrega s6b_annotate.py.
 Términos: identificadores partidos (snake_case / camelCase) ponderados por owners distintos x idf entre
 clusters; también se guarda el c-TF-IDF de BERTopic (terms_ctfidf), que tiende a reflejar al owner dominante.
 Salidas: data/<modo>/s6_assign.parquet (fid, topic, sim_centroide), data/<modo>/s6_clusters.parquet
@@ -142,7 +142,7 @@ with stage(cfg, "s6_cluster", [ASSIGN, CLUSTERS]) as st:
     F["funciones_ruido"] = int((fn.topic < 0).sum())
     for m in (3, 5, 8, 15):
         F[f"clusters_con_>={m}_owners"] = int((cl.owners >= m).sum())
-    spec = cl[(cl.owners >= cfg["report"]["specific_min_owners"]) & (cl.domain_q < cfg["report"]["max_q"])]
+    spec = cl[(cl.owners_main >= cfg["report"]["specific_min_owners"]) & (cl.domain_q < cfg["report"]["max_q"])]
     for d, n in spec.domain_main.value_counts().items():
         F[f"clusters_enriquecidos_q<{cfg['report']['max_q']}:{d}"] = int(n)
     F["  de_esos_genericos_por_control"] = int(spec.generic.sum())
