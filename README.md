@@ -73,7 +73,7 @@ each looking at 6 functions from different owners (fixed seed):
 A label is **confirmed** when both agree and Jev is not ambiguous: 32 of 65. Each library Haiku proposed was checked against
 the PyPI JSON API and scored by Jev ("this library directly solves the need"); 12 of 26 were kept (≥0.7). "Already declared"
 is the share of the cluster's repos that list one of those libraries in `requirements*.txt`, `pyproject.toml`, `setup.py`,
-`setup.cfg` or `Pipfile`.
+`setup.cfg` or `Pipfile`, out of all the cluster's repos (a repo with no declared dependencies counts as not using one).
 
 ## Results
 
@@ -93,8 +93,8 @@ skipping `<think>` blocks, finding the outermost braces, retrying `json.loads`. 
 | Domain-specific | LLM | Split text into bounded chunks, with overlap or cuts on paragraph, sentence or heading boundaries | 207 | 11.8 % vs 1.0 % (3) | langchain-text-splitters 1.1.3, chonkie 1.7.0, semchunk 4.1.1 | 10 % (21/207) |
 | Domain-specific | LLM | Append a message (role and content) to a conversation history, in a database or in memory, sometimes trimming it | 105 | 6.0 % vs 0.3 % (1) | none accepted | — |
 | Domain-specific | LLM | Extract and normalize token-usage counters (prompt, completion, input/output, reasoning) from LLM responses | 88 | 5.0 % vs 0.7 % (2) | none accepted | — |
-| Domain-specific | Django | Validate uploaded files (size, extension, real type via magic bytes or headers) | 50 | 4.9 % vs 1.0 % (3) | filetype 1.2.0, python-magic 0.4.27, puremagic 2.2.0 | 21 % (10/48) |
-| Domain-specific | Django | Build and send password-reset emails with custom logic | 41 | 4.0 % vs 0.7 % (2) | django-allauth 65.20.1, django-rest-passwordreset 1.6.0 | 18 % (7/40) |
+| Domain-specific | Django | Validate uploaded files (size, extension, real type via magic bytes or headers) | 50 | 4.9 % vs 1.0 % (3) | filetype 1.2.0, python-magic 0.4.27, puremagic 2.2.0 | 20 % (10/50) |
+| Domain-specific | Django | Build and send password-reset emails with custom logic | 41 | 4.0 % vs 0.7 % (2) | django-allauth 65.20.1, django-rest-passwordreset 1.6.0 | 17 % (7/41) |
 
 Whether any of these is a real gap is a judgment call left to the reader; the explorer shows 5 example functions per cluster
 (first lines only, linked to the exact commit on GitHub).

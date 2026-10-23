@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- static:head (lo escribe scripts/s10_export_site.py) -->
-<title>clonemap — what developers keep rewriting</title>
-<meta name="description" content="In regular Python projects it&#x27;s 4%. A library for this exists (json_repair); only 2% of those apps use it. A look at what developers keep rewriting in 3,075 GitHub projects.">
+<title>clonemap — what projects keep rewriting</title>
+<meta name="description" content="In regular Python projects it&#x27;s 4%. A library for this exists (json_repair); only 2% of those apps use it. A look at what projects keep rewriting, across 3,075 GitHub projects.">
 <link rel="canonical" href="https://harthor.github.io/clonemap/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="clonemap">
 <meta property="og:title" content="28% of LLM apps write their own parser for the JSON the model returns">
-<meta property="og:description" content="In regular Python projects it&#x27;s 4%. A library for this exists (json_repair); only 2% of those apps use it. A look at what developers keep rewriting in 3,075 GitHub projects.">
+<meta property="og:description" content="In regular Python projects it&#x27;s 4%. A library for this exists (json_repair); only 2% of those apps use it. A look at what projects keep rewriting, across 3,075 GitHub projects.">
 <meta property="og:url" content="https://harthor.github.io/clonemap/">
 <meta property="og:image" content="https://harthor.github.io/clonemap/og.png">
 <meta property="og:image:width" content="1200">
@@ -18,7 +18,7 @@
 <meta property="og:image:alt" content="28% of LLM apps vs 4% of regular Python projects write their own parser for JSON from model replies.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="28% of LLM apps write their own parser for the JSON the model returns">
-<meta name="twitter:description" content="In regular Python projects it&#x27;s 4%. A library for this exists (json_repair); only 2% of those apps use it. A look at what developers keep rewriting in 3,075 GitHub projects.">
+<meta name="twitter:description" content="In regular Python projects it&#x27;s 4%. A library for this exists (json_repair); only 2% of those apps use it. A look at what projects keep rewriting, across 3,075 GitHub projects.">
 <meta name="twitter:image" content="https://harthor.github.io/clonemap/og.png">
 <!-- /static:head -->
 <style>
@@ -49,9 +49,9 @@ code, pre { font-family: var(--mono); }
 .top { display: flex; align-items: center; gap: 20px; padding: 22px 0 0; flex-wrap: wrap; }
 .brand { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
 .tabs { display: flex; gap: 2px; margin-left: auto; }
-.tabs button { font: inherit; font-size: 15px; background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 10px; color: var(--muted); cursor: pointer; }
-.tabs button[aria-selected="true"] { color: var(--fg); border-color: var(--accent); }
-.tabs button:focus-visible, .help:focus-visible, tbody tr:focus-visible, .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tabs a { font-size: 15px; border-bottom: 2px solid transparent; padding: 6px 10px; color: var(--muted); text-decoration: none; }
+.tabs a[aria-current="page"] { color: var(--fg); border-color: var(--accent); }
+.tabs a:focus-visible, .help:focus-visible, tbody tr:focus-visible, .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .panel[hidden] { display: none; }
 section.block { margin: 72px 0; }
 h2 { font-size: 24px; line-height: 1.25; margin: 0 0 8px; letter-spacing: -0.01em; }
@@ -166,14 +166,14 @@ footer { border-top: 1px solid var(--line); margin-top: 72px; padding: 24px 0 48
 <div class="wrap">
   <div class="top">
     <span class="brand">clonemap</span>
-    <nav class="tabs" role="tablist" aria-label="Sections">
-      <button role="tab" id="tab-findings" aria-controls="findings" aria-selected="true">Findings</button>
-      <button role="tab" id="tab-method" aria-controls="method" aria-selected="false">Method</button>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#findings" data-panel="findings" aria-current="page">Findings</a>
+      <a href="#method" data-panel="method">Method</a>
     </nav>
   </div>
 
   <main>
-    <div id="findings" class="panel" role="tabpanel" aria-labelledby="tab-findings">
+    <div id="findings" class="panel">
       <section class="hero" id="hero">
 <!-- static:hero (lo escribe scripts/s10_export_site.py) -->
 <h1><em>28% of LLM apps</em> write their own parser for the JSON the model returns.</h1>
@@ -187,45 +187,45 @@ footer { border-top: 1px solid var(--line); margin-top: 72px; padding: 24px 0 48
       </section>
 
       <section class="block">
-        <h2>What developers keep rewriting</h2>
+        <h2>What projects keep rewriting</h2>
         <p class="sub">Pieces of code that many unrelated projects wrote from scratch, each in its own way. Tap a card to see real examples.</p>
         <div class="cards" id="cards">
 <!-- static:cards (lo escribe scripts/s10_export_site.py) -->
-<button type="button" class="card" data-id="2" aria-label="Extract structured data from AI replies: see details">
+<button type="button" class="card" data-id="2" aria-label="Parsing JSON out of model replies: see details">
   <span class="kicker">LLM apps</span>
-  <h3>Extract structured data from AI replies</h3>
-  <div class="stat"><div><b>496</b><span>developers wrote it</span></div><div><b>×7</b><span>vs. regular Python</span></div></div>
+  <h3>Parsing JSON out of model replies</h3>
+  <div class="stat"><div><b>496</b><span>projects wrote it</span></div><div><b>×7</b><span>vs. regular Python</span></div></div>
   <div class="lib"><span>Existing: json_repair — 2% of these projects use it</span></div>
 </button>
-<button type="button" class="card" data-id="33" aria-label="Breaking long text into pieces: see details">
+<button type="button" class="card" data-id="33" aria-label="Splitting text into chunks: see details">
   <span class="kicker">LLM apps</span>
-  <h3>Breaking long text into pieces</h3>
-  <div class="stat"><div><b>207</b><span>developers wrote it</span></div><div><b>×9</b><span>vs. regular Python</span></div></div>
+  <h3>Splitting text into chunks</h3>
+  <div class="stat"><div><b>207</b><span>projects wrote it</span></div><div><b>×9</b><span>vs. regular Python</span></div></div>
   <div class="lib"><span>Existing: langchain-text-splitters, chonkie, semchunk — 10% of these projects use one</span></div>
 </button>
 <button type="button" class="card" data-id="165" aria-label="Save chat messages to history: see details">
   <span class="kicker">LLM apps</span>
   <h3>Save chat messages to history</h3>
-  <div class="stat"><div><b>105</b><span>developers wrote it</span></div><div><b>×9</b><span>vs. regular Python</span></div></div>
-  <div class="lib"><span class="none">No standard library fits</span></div>
+  <div class="stat"><div><b>105</b><span>projects wrote it</span></div><div><b>×9</b><span>vs. regular Python</span></div></div>
+  <div class="lib"><span class="none">No existing library passed our check</span></div>
 </button>
 <button type="button" class="card" data-id="153" aria-label="Tracking token usage in AI calls: see details">
   <span class="kicker">LLM apps</span>
   <h3>Tracking token usage in AI calls</h3>
-  <div class="stat"><div><b>88</b><span>developers wrote it</span></div><div><b>×5</b><span>vs. regular Python</span></div></div>
-  <div class="lib"><span class="none">No standard library fits</span></div>
+  <div class="stat"><div><b>88</b><span>projects wrote it</span></div><div><b>×5</b><span>vs. regular Python</span></div></div>
+  <div class="lib"><span class="none">No existing library passed our check</span></div>
 </button>
 <button type="button" class="card" data-id="220" aria-label="Checking uploaded files before accepting them: see details">
   <span class="kicker">Django apps</span>
   <h3>Checking uploaded files before accepting them</h3>
-  <div class="stat"><div><b>50</b><span>developers wrote it</span></div><div><b>×4</b><span>vs. regular Python</span></div></div>
-  <div class="lib"><span>Existing: filetype, python-magic, puremagic — 21% of these projects use one</span></div>
+  <div class="stat"><div><b>50</b><span>projects wrote it</span></div><div><b>×4</b><span>vs. regular Python</span></div></div>
+  <div class="lib"><span>Existing: filetype, python-magic, puremagic — 20% of these projects use one</span></div>
 </button>
 <button type="button" class="card" data-id="779" aria-label="Sending password reset emails: see details">
   <span class="kicker">Django apps</span>
   <h3>Sending password reset emails</h3>
-  <div class="stat"><div><b>41</b><span>developers wrote it</span></div><div><b>×4</b><span>vs. regular Python</span></div></div>
-  <div class="lib"><span>Existing: django-allauth, django-rest-passwordreset — 18% of these projects use one</span></div>
+  <div class="stat"><div><b>41</b><span>projects wrote it</span></div><div><b>×4</b><span>vs. regular Python</span></div></div>
+  <div class="lib"><span>Existing: django-allauth, django-rest-passwordreset — 17% of these projects use one</span></div>
 </button>
 <!-- /static:cards -->
         </div>
@@ -265,38 +265,76 @@ footer { border-top: 1px solid var(--line); margin-top: 72px; padding: 24px 0 48
       </section>
     </div>
 
-    <div id="method" class="panel" role="tabpanel" aria-labelledby="tab-method" hidden>
-      <section class="hero">
-        <h2 class="title">How this was measured</h2>
-        <p class="lead">The idea: if many unrelated developers write the same piece of code by hand, something may be missing — or something
-          exists and is not being found. Nobody has to ask for the library; the code shows the need.</p>
-      </section>
-
-      <section class="block">
-        <h2>Six steps</h2>
-        <p class="sub">Everything ran on one laptop. The only paid part was the AI review at the end.</p>
-        <ol class="flow" id="flow"></ol>
-      </section>
-
-      <section class="block">
-        <h2>The control group</h2>
-        <div class="prose" id="control"></div>
-        <div class="compare">
-          <div><h4>Command-line argument parsing</h4><p>18% of LLM apps write it, which made it look "LLM-specific" when compared only among LLM and Django apps. But 7% of regular Python projects write it too, so it is marked <em>common everywhere</em>.</p></div>
-          <div><h4>Parsing JSON from model replies</h4><p>28% of LLM apps, 4% of regular Python projects. Present in both, but about seven times more common in LLM apps: <em>mostly in LLM apps</em>.</p></div>
-        </div>
-      </section>
-
-      <section class="block">
-        <h2>Limits</h2>
-        <ul class="limits" id="limits"></ul>
-      </section>
+    <div id="method" class="panel">
+<!-- static:method (lo escribe scripts/s10_export_site.py) -->
+<section class="hero">
+  <h2 class="title">How this was measured</h2>
+  <p class="lead">The idea: if many unrelated projects write the same piece of code by hand, something may be missing — or something
+    exists and is not being found. Nobody has to ask for the library; the code shows the need.</p>
+</section>
+<section class="block">
+  <h2>Six steps</h2>
+  <p class="sub">Everything ran on one laptop. The only paid part was the AI review at the end.</p>
+  <ol class="flow">
+    <li><b>Pick the projects</b><span>1,750 LLM apps, 1,025 Django apps and 300 regular Python projects from GitHub — apps, not libraries or tutorials, one project per owner.</span></li>
+    <li><b>Download the code</b><span>Only the Python files, at a fixed version, so every link points to the exact code analyzed.</span></li>
+    <li><b>Cut it into functions</b><span>420,391 functions of at least 10 lines, leaving out tests and generated code.</span></li>
+    <li><b>Merge copy-paste</b><span>Near-identical copies count once: the goal is the same job written in different ways.</span></li>
+    <li><b>Group by meaning</b><span>A code-reading model places similar functions together; 6,066 groups came out.</span></li>
+    <li><b>Compare and review</b><span>Each group is checked against the regular projects; the top ones were reviewed by two AI models.</span></li>
+  </ol>
+</section>
+<section class="block">
+  <h2>The control group</h2>
+  <div class="prose">
+    <p>Some code appears in almost every Python program: reading command-line options, setting up logs, loading a settings file.
+      Counting only LLM and Django apps, that code looks specific to them just because they are most of the sample.</p>
+    <p>So 300 regular Python projects, with no Django and no AI libraries, go through the same steps. Every group
+      is then measured as "share of these apps that have it" divided by "share of regular Python projects that have it". That is the
+      × number in the table.</p>
+  </div>
+  <div class="compare">
+    <div><h4>Command-line argument parsing</h4><p>18% of LLM apps write it, which made it look "LLM-specific"
+      when compared only among LLM and Django apps. But 7% of regular Python projects write it too, so it
+      is marked <em>common everywhere</em>.</p></div>
+    <div><h4>Parsing JSON out of model replies</h4><p>28% of LLM apps, 4% of regular Python projects. Present in both, but
+      7 times more common in LLM apps: <em>mostly in LLM apps</em>.</p></div>
+  </div>
+</section>
+<section class="block">
+  <h2>Checked by two AI models</h2>
+  <div class="prose">
+    <p>The top 65 groups were shown to two models, each with six functions from different projects. <b>Jev 1.13</b> (TypeSafe)
+      scored four statements — "calls an AI or web service", "framework boilerplate", "reimplemented utility", "other" — and picked
+      the most likely; if its first choice beat the second by less than 0.15, it counted as unsure.
+      <b>Claude Haiku</b> answered the same question in its own words.</p>
+    <p>A group is <em>confirmed</em> when both models agree and Jev is not unsure: 32 of 65. Of those, 6 are
+      reimplemented utilities, the cards at the top of the page.</p>
+    <p>For libraries, Haiku proposed 26 names. Each was checked to exist on PyPI and then scored by Jev on whether it
+      directly solves the job; 12 scored at least 0.7 and are shown. "No existing library passed our check"
+      means none did.</p>
+  </div>
+</section>
+<section class="block">
+  <h2>Limits</h2>
+  <ul class="limits">
+    <li>The comparison group is small (300 projects). Something can be missing from it by chance, so small differences are not meaningful.</li>
+    <li>The groups differ in popularity: regular projects come from a list of mostly well-starred repositories; LLM and Django apps include many small ones.</li>
+    <li>One of the two AI reviewers scores each answer separately, so its scores don&#x27;t add up to 100%; about a third of its reviews came out unsure.</li>
+    <li>Two models agreeing is a lead, not proof. Every finding here deserves a human look at the examples.</li>
+    <li>&quot;% use it&quot; counts projects that list the library as a direct dependency; a library pulled in indirectly is not counted.</li>
+    <li>The code-reading model only sees the first part of long functions.</li>
+    <li>One snapshot of GitHub, taken in October 2026 (data generated 2026-10-23).</li>
+  </ul>
+</section>
+<!-- /static:method -->
     </div>
   </main>
 
   <footer>
-    Data from <span id="gen">—</span>. Code examples belong to their authors; the explorer shows at most five lines of each and links to
-    the original file. <a href="https://github.com/Harthor/clonemap">Source and full method on GitHub</a> (MIT).
+<!-- static:footer (lo escribe scripts/s10_export_site.py) -->
+Data from <span id="gen">2026-10-23</span>. Code examples belong to their authors; the explorer shows at most five lines of each and links to the original file. <a href="https://github.com/Harthor/clonemap">Source and full method on GitHub</a> (MIT).
+<!-- /static:footer -->
   </footer>
 </div>
 
@@ -315,7 +353,7 @@ const CAT = { uso_sdk: "Calls an AI or web service", idiomatico_framework: "Fram
 const COLUMNS = [
   ["Name", "What the code does, in plain words. Clusters without a description were not reviewed by the AI models."],
   ["Type", "Where this code shows up: only in one kind of app, mostly there, everywhere, or as the standard pattern a framework asks you to write."],
-  ["Developers", "How many different developers (one project each) wrote their own version."],
+  ["Projects", "How many different GitHub projects wrote their own version (each project has a different owner)."],
   ["× more common", "How many times more often it appears in these apps than in regular Python projects (smoothed, so small counts don't exaggerate)."],
   ["Existing libraries", "Libraries on PyPI that an AI model judged to solve this directly, checked to exist. A dash if none was proposed or none fit."],
 ];
@@ -336,7 +374,7 @@ const help = text => el("button", { type: "button", class: "help", "aria-label":
 
 function libraryLine(c, prefix = true) {
   const L = c.label;
-  if (!L || !L.libraries.length) return el("span", { class: "none", text: "No standard library fits" });
+  if (!L || !L.libraries.length) return el("span", { class: "none", text: "No existing library passed our check" });
   const names = L.libraries.map(libName).join(", ");
   const used = L.already_declared_pct != null ? ` — ${Math.round(L.already_declared_pct)}% of these projects use ${L.libraries.length > 1 ? "one" : "it"}` : "";
   return el("span", {}, prefix ? `Existing: ${names}` : names, used);
@@ -364,7 +402,7 @@ function renderTable() {
       : el("td", { class: "name undescribed", text: "Not described yet" });
     const tr = el("tr", { tabindex: "0" }, name,
       el("td", { class: "type", "data-label": "Type", text: TYPE[c.section](c.domain) }),
-      el("td", { class: "num", "data-label": "Developers", text: fmt(c.owners) }),
+      el("td", { class: "num", "data-label": "Projects", text: fmt(c.owners) }),
       el("td", { class: "num", "data-label": "× more common", text: times(c) }),
       el("td", { "data-label": "Existing libraries", text: libs }));
     tr.addEventListener("click", () => openDetail(c));
@@ -380,7 +418,7 @@ function openDetail(c) {
   const kv = el("dl", { class: "kv" });
   const add = (k, v) => kv.append(el("dt", { text: k }), el("dd", {}, v));
   add("Type", TYPE[c.section](c.domain));
-  add("Developers", `${fmt(c.owners)} ${APP[c.domain]} projects (${c.pct_domain}%) and ${c.owners_control} regular Python projects (${c.pct_control}%)`);
+  add("Projects", `${fmt(c.owners)} ${APP[c.domain]} projects (${c.pct_domain}%) and ${c.owners_control} regular Python projects (${c.pct_control}%)`);
   add("× more common", `${times(c)} than in regular Python projects`);
   add("Existing libraries", libraryLine(c, false));
   const parts = [L ? el("p", { text: L.description }) : null, kv];
@@ -403,37 +441,16 @@ function openDetail(c) {
   document.getElementById("detail").showModal();
 }
 
-function renderMethod(d) {
-  const r = d.run;
-  const steps = [
-    ["Pick the projects", `${fmt(r.repos.llm)} LLM apps, ${fmt(r.repos.django)} Django apps and ${fmt(r.repos.control)} regular Python projects from GitHub — apps, not libraries or tutorials.`],
-    ["Download the code", "Only the Python files, at a fixed version, so every link points to the exact code analyzed."],
-    ["Cut it into functions", `${fmt(r.functions)} functions of at least 10 lines, leaving out tests and generated code.`],
-    ["Merge copy-paste", "Near-identical copies count once: the goal is the same job written in different ways."],
-    ["Group by meaning", `A code-reading model places similar functions together; ${fmt(r.clusters)} groups came out.`],
-    ["Compare and review", "Each group is checked against the regular projects; the top ones were reviewed by two AI models."],
-  ];
-  document.getElementById("flow").replaceChildren(...steps.map(([b, t]) => el("li", {}, el("b", { text: b }), el("span", { text: t }))));
-  document.getElementById("control").replaceChildren(
-    el("p", { text: "Some code appears in almost every Python program: reading command-line options, setting up logs, loading a settings file. Counting only LLM and Django apps, that code looks specific to them just because they are most of the sample." }),
-    el("p", { text: `So ${fmt(r.repos.control)} regular Python projects, with no Django and no AI libraries, go through the same steps. Every group is then measured as "how common in these apps" divided by "how common in regular Python". That is the × number in the table.` }));
-  const limits = [
-    `The comparison group is small (${fmt(r.repos.control)} projects). Something can be missing from it by chance, so small differences are not meaningful.`,
-    "The groups differ in popularity: regular projects come from a list of mostly well-starred repositories; LLM and Django apps include many small ones.",
-    "One of the two AI reviewers scores each answer separately, so its scores don't add up to 100%; about a third of its reviews came out unsure.",
-    "Two models agreeing is a lead, not proof. Every finding here deserves a human look at the examples.",
-    "\"% that use it\" counts libraries listed as direct dependencies; a library pulled in indirectly is not counted.",
-    "The code-reading model only sees the first part of long functions.",
-    "One snapshot of GitHub, October 2026.",
-  ];
-  document.getElementById("limits").replaceChildren(...limits.map(t => el("li", { text: t })));
-}
-
-function setTab(id) {
-  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.getAttribute("aria-controls") === id));
+// Sin JavaScript se ven las dos secciones y el menú son anchors (#findings, #method). Con JavaScript, una a la vez.
+function showPanel() {
+  const id = location.hash === "#method" ? "method" : "findings";
   document.querySelectorAll(".panel").forEach(p => p.hidden = p.id !== id);
+  document.querySelectorAll(".tabs a").forEach(a => a.toggleAttribute("aria-current", a.dataset.panel === id));
+  if (firstRender) firstRender = false; else window.scrollTo(0, 0);
 }
-document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => { setTab(b.getAttribute("aria-controls")); window.scrollTo(0, 0); }));
+let firstRender = true;
+window.addEventListener("hashchange", showPanel);
+showPanel();
 document.getElementById("thead").replaceChildren(...COLUMNS.map(([t, h], i) => el("th", { class: i === 2 || i === 3 ? "num" : "" }, t, help(h))));
 document.getElementById("d-close").addEventListener("click", () => document.getElementById("detail").close());
 document.getElementById("detail").addEventListener("click", e => { if (e.target.id === "detail") e.target.close(); });
@@ -441,7 +458,7 @@ document.getElementById("detail").addEventListener("click", e => { if (e.target.
 
 fetch(new URL("data.json", document.baseURI))
   .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-  .then(d => { DATA = d; wireCards(d); renderTable(); renderMethod(d); document.getElementById("gen").textContent = d.generated; })
+  .then(d => { DATA = d; wireCards(d); renderTable(); })
   .catch(err => {
     document.getElementById("rows").replaceChildren(el("tr", {}, el("td", { colspan: "5", class: "error" },
       el("b", { text: "The cluster table could not be loaded. " }),

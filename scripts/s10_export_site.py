@@ -74,7 +74,8 @@ for t, sid in picked.items():
     if t in lab.index:
         lr = lab.loc[t]
         item["label"] = {
-            "name": en.loc[t, "name_en"], "description": en.loc[t, "description_en"], "jev": lr.categoria_jev, "jev_ambiguous": bool(lr.jev_ambigua),
+            "name": S.get("name_overrides", {}).get(int(t), en.loc[t, "name_en"]),
+            "description": en.loc[t, "description_en"], "jev": lr.categoria_jev, "jev_ambiguous": bool(lr.jev_ambigua),
             "jev_probs": {k: float(lr[f"jev_p_{k}"]) for k in ("uso_sdk", "idiomatico_framework", "utilidad_reimplementada", "otro")},
             "haiku": lr.categoria_haiku, "status": lr.estado,
             "libraries": [x for x in str(nan_none(lr.librerias_aceptadas) or "").split("; ") if x],
@@ -83,8 +84,11 @@ for t, sid in picked.items():
         }
         if t in use.index:
             u = use.loc[t]
-            item["label"]["already_declared_pct"] = nan_none(u.pct_con_alguna_lib) if item["label"]["libraries"] else None
-            item["label"]["already_declared"] = f"{int(u.repos_con_alguna_lib)}/{int(u.repos_con_deps)}"
+            # Base = todos los proyectos del dominio en el cluster (la misma que el número grande de la tarjeta);
+            # un proyecto sin dependencias declaradas cuenta como que no la declara.
+            item["label"]["already_declared_pct"] = (round(100 * u.repos_con_alguna_lib / u.repos_cluster, 1)
+                                                     if item["label"]["libraries"] else None)
+            item["label"]["already_declared"] = f"{int(u.repos_con_alguna_lib)}/{int(u.repos_cluster)}"
     clusters.append(item)
 clusters.sort(key=lambda x: -x["owners"])
 
@@ -114,7 +118,7 @@ H_LIB, H_USE = h["label"]["libraries"][0].split("==")[0], round(h["label"]["alre
 n_repos = sum(data["run"]["repos"].values())
 title = f"{H_PCT}% of LLM apps write their own parser for the JSON the model returns"
 desc = (f"In regular Python projects it's {H_CTRL}%. A library for this exists ({H_LIB}); only {H_USE}% of those apps use it. "
-        f"A look at what developers keep rewriting in {n_repos:,} GitHub projects.")
+        f"A look at what projects keep rewriting, across {n_repos:,} GitHub projects.")
 url = S["site_url"]
 
 
@@ -125,7 +129,7 @@ def times(c) -> str:
 def library_line(c) -> str:
     L = c["label"]
     if not L["libraries"]:
-        return '<span class="none">No standard library fits</span>'
+        return '<span class="none">No existing library passed our check</span>'
     names = ", ".join(x.split("==")[0] for x in L["libraries"])
     used = (f" — {round(L['already_declared_pct'])}% of these projects use {'one' if len(L['libraries']) > 1 else 'it'}"
             if L.get("already_declared_pct") is not None else "")
@@ -133,7 +137,7 @@ def library_line(c) -> str:
 
 
 static = {
-    "head": f"""<title>clonemap — what developers keep rewriting</title>
+    "head": f"""<title>clonemap — what projects keep rewriting</title>
 <meta name="description" content="{e(desc)}">
 <link rel="canonical" href="{url}">
 <meta property="og:type" content="website">
@@ -160,12 +164,91 @@ static = {
         f"""<button type="button" class="card" data-id="{c['id']}" aria-label="{e(c['label']['name'])}: see details">
   <span class="kicker">{APP[c['domain']]} apps</span>
   <h3>{e(c['label']['name'])}</h3>
-  <div class="stat"><div><b>{c['owners']:,}</b><span>developers wrote it</span></div><div><b>{times(c)}</b><span>vs. regular Python</span></div></div>
+  <div class="stat"><div><b>{c['owners']:,}</b><span>projects wrote it</span></div><div><b>{times(c)}</b><span>vs. regular Python</span></div></div>
   <div class="lib">{library_line(c)}</div>
 </button>"""
         for c in sorted((c for c in clusters if c.get("label") and c["label"]["status"] == "confirmado"
                          and c["label"]["jev"] == "utilidad_reimplementada"), key=lambda c: -c["owners"])),
 }
+r = data["run"]
+n_lab = len(lab)
+n_conf = int((lab.estado == "confirmado").sum())
+n_util = sum(1 for c in clusters if c.get("label") and c["label"]["status"] == "confirmado"
+             and c["label"]["jev"] == "utilidad_reimplementada")
+libs_proposed = sum(len([x for x in str(nan_none(v) or "").split("; ") if x]) for v in lab.librerias_haiku)
+libs_kept = sum(len([x for x in str(nan_none(v) or "").split("; ") if x]) for v in lab.librerias_aceptadas)
+L8 = cfg["label"]
+argparse = max((c for c in clusters if c["section"] == "generic" and "argparse" in c["terms"][:6]), key=lambda c: c["owners"])
+steps = [
+    ("Pick the projects", f"{r['repos']['llm']:,} LLM apps, {r['repos']['django']:,} Django apps and {r['repos']['control']:,} "
+                          "regular Python projects from GitHub — apps, not libraries or tutorials, one project per owner."),
+    ("Download the code", "Only the Python files, at a fixed version, so every link points to the exact code analyzed."),
+    ("Cut it into functions", f"{r['functions']:,} functions of at least 10 lines, leaving out tests and generated code."),
+    ("Merge copy-paste", "Near-identical copies count once: the goal is the same job written in different ways."),
+    ("Group by meaning", f"A code-reading model places similar functions together; {r['clusters']:,} groups came out."),
+    ("Compare and review", "Each group is checked against the regular projects; the top ones were reviewed by two AI models."),
+]
+limits = [
+    f"The comparison group is small ({r['repos']['control']:,} projects). Something can be missing from it by chance, so small differences are not meaningful.",
+    "The groups differ in popularity: regular projects come from a list of mostly well-starred repositories; LLM and Django apps include many small ones.",
+    "One of the two AI reviewers scores each answer separately, so its scores don't add up to 100%; about a third of its reviews came out unsure.",
+    "Two models agreeing is a lead, not proof. Every finding here deserves a human look at the examples.",
+    "\"% use it\" counts projects that list the library as a direct dependency; a library pulled in indirectly is not counted.",
+    "The code-reading model only sees the first part of long functions.",
+    f"One snapshot of GitHub, taken in October 2026 (data generated {data['generated']}).",
+]
+static["method"] = f"""<section class="hero">
+  <h2 class="title">How this was measured</h2>
+  <p class="lead">The idea: if many unrelated projects write the same piece of code by hand, something may be missing — or something
+    exists and is not being found. Nobody has to ask for the library; the code shows the need.</p>
+</section>
+<section class="block">
+  <h2>Six steps</h2>
+  <p class="sub">Everything ran on one laptop. The only paid part was the AI review at the end.</p>
+  <ol class="flow">
+{chr(10).join(f'    <li><b>{e(b)}</b><span>{e(t)}</span></li>' for b, t in steps)}
+  </ol>
+</section>
+<section class="block">
+  <h2>The control group</h2>
+  <div class="prose">
+    <p>Some code appears in almost every Python program: reading command-line options, setting up logs, loading a settings file.
+      Counting only LLM and Django apps, that code looks specific to them just because they are most of the sample.</p>
+    <p>So {r['repos']['control']:,} regular Python projects, with no Django and no AI libraries, go through the same steps. Every group
+      is then measured as "share of these apps that have it" divided by "share of regular Python projects that have it". That is the
+      × number in the table.</p>
+  </div>
+  <div class="compare">
+    <div><h4>Command-line argument parsing</h4><p>{round(argparse['pct_domain'])}% of LLM apps write it, which made it look "LLM-specific"
+      when compared only among LLM and Django apps. But {round(argparse['pct_control'])}% of regular Python projects write it too, so it
+      is marked <em>common everywhere</em>.</p></div>
+    <div><h4>Parsing JSON out of model replies</h4><p>{H_PCT}% of LLM apps, {H_CTRL}% of regular Python projects. Present in both, but
+      {times(h)[1:]} times more common in LLM apps: <em>mostly in LLM apps</em>.</p></div>
+  </div>
+</section>
+<section class="block">
+  <h2>Checked by two AI models</h2>
+  <div class="prose">
+    <p>The top {n_lab} groups were shown to two models, each with six functions from different projects. <b>Jev 1.13</b> (TypeSafe)
+      scored four statements — "calls an AI or web service", "framework boilerplate", "reimplemented utility", "other" — and picked
+      the most likely; if its first choice beat the second by less than {L8['jev_ambiguous_margin']}, it counted as unsure.
+      <b>Claude Haiku</b> answered the same question in its own words.</p>
+    <p>A group is <em>confirmed</em> when both models agree and Jev is not unsure: {n_conf} of {n_lab}. Of those, {n_util} are
+      reimplemented utilities, the cards at the top of the page.</p>
+    <p>For libraries, Haiku proposed {libs_proposed} names. Each was checked to exist on PyPI and then scored by Jev on whether it
+      directly solves the job; {libs_kept} scored at least {L8['jev_lib_min_prob']} and are shown. "No existing library passed our check"
+      means none did.</p>
+  </div>
+</section>
+<section class="block">
+  <h2>Limits</h2>
+  <ul class="limits">
+{chr(10).join(f'    <li>{e(t)}</li>' for t in limits)}
+  </ul>
+</section>"""
+static["footer"] = (f"Data from <span id=\"gen\">{data['generated']}</span>. Code examples belong to their authors; the explorer shows at "
+                    "most five lines of each and links to the original file. "
+                    "<a href=\"https://github.com/Harthor/clonemap\">Source and full method on GitHub</a> (MIT).")
 page_path = ROOT / "site" / "index.html"
 page = page_path.read_text()
 for k, v in static.items():
