@@ -11,7 +11,7 @@ a `budget_usd` o si el saldo de la cuenta baja de `min_balance_usd`. Respuestas 
 data/cache/llm_labels.sqlite (re-correr no vuelve a pagar).
 `max_tokens` incluye los tokens de razonamiento de los modelos que razonan (Haiku 5.5 se comía 400 enteros).
 Key: OPENROUTER_API_KEY en el entorno o en clonemap/.env (gitignored); no se imprime ni se copia.
-Salidas: data/<modo>/etiquetado.csv, data/<modo>/resumen_post.md
+Salida: data/<modo>/etiquetado.csv (el resumen lo arma s9_resumen.py)
 Uso: uv run scripts/s8_label.py [--mode full] [--dry-run]
 """
 import argparse
@@ -66,6 +66,12 @@ def load_key() -> str:
 db = sqlite3.connect(cache_dir(cfg) / "llm_labels.sqlite")
 db.execute("PRAGMA journal_mode=WAL")
 db.execute("CREATE TABLE IF NOT EXISTS calls (k TEXT PRIMARY KEY, model TEXT, response TEXT, cost REAL)")
+# modelo que respondió de verdad e id de la generación (las respuestas de antes de este cambio no los tienen)
+for col in ("resp_model TEXT", "gen_id TEXT"):
+    try:
+        db.execute(f"ALTER TABLE calls ADD COLUMN {col}")
+    except sqlite3.OperationalError:
+        pass
 db.execute("CREATE TABLE IF NOT EXISTS pypi (name TEXT PRIMARY KEY, version TEXT)")
 
 
@@ -90,7 +96,7 @@ class OpenRouter:
         if self.spent >= L["budget_usd"]:
             raise Budget(f"gasto acumulado {self.spent:.4f} USD >= tope {L['budget_usd']} USD")
 
-    def chat(self, model: str, prompt: str) -> tuple[str, float]:
+    def chat(self, model: str, prompt: str) -> tuple[str, float, str, str]:
         self.check()
         r = self.s.post("https://openrouter.ai/api/v1/chat/completions", timeout=180, json={
             "model": model, "temperature": 0, "max_tokens": L["max_tokens"], "usage": {"include": True},
@@ -99,7 +105,10 @@ class OpenRouter:
         d = r.json()
         cost = float((d.get("usage") or {}).get("cost") or 0.0)
         self.spent += cost
-        return d["choices"][0]["message"]["content"], cost
+        # sin routers: el que responde tiene que ser el modelo pedido (se admite sufijo de versión/fecha)
+        if not str(d.get("model") or "").startswith(model):
+            raise RuntimeError(f"pedí {model} y respondió {d.get('model')} (id {d.get('id')})")
+        return d["choices"][0]["message"]["content"], cost, d.get("model"), d.get("id")
 
 
 def parse_label(text: str) -> dict:
@@ -168,8 +177,9 @@ if __name__ == "__main__":
                 if hit and parse_label(hit[0])["categoria"] != "sin_respuesta_valida":
                     text = hit[0]
                 else:
-                    text, cost = orr.chat(model, prompt)
-                    db.execute("INSERT OR REPLACE INTO calls VALUES (?,?,?,?)", (k, model, text, cost))
+                    text, cost, resp_model, gen_id = orr.chat(model, prompt)
+                    db.execute("INSERT OR REPLACE INTO calls (k, model, response, cost, resp_model, gen_id) "
+                               "VALUES (?,?,?,?,?,?)", (k, model, text, cost, resp_model, gen_id))
                     db.commit()
                 labels[role] = parse_label(text)
             a, b = labels["principal"], labels["segundo"]
@@ -191,19 +201,6 @@ if __name__ == "__main__":
 
     out = pd.DataFrame(rows)
     out.to_csv(OUT / "etiquetado.csv", index=False)
-    conf = out[(out.estado == "confirmado") & (out.categoria_principal == "utilidad_reimplementada")] if len(out) else out
-    md = ["# Utilidades reimplementadas confirmadas", "",
-          f"Top {L['top_n']} por owners de cada dominio (específicos: ≥{cfg['report']['specific_min_owners']} owners, "
-          f"≤{cfg['report']['specific_max_ctrl']} repos de control). Etiquetado: {L['model_main']} + {L['model_second']}; "
-          "\"confirmado\" = los dos coinciden en la categoría. Las librerías son sugerencias de los modelos, verificadas solo en "
-          "su existencia en PyPI, no en que resuelvan el problema.", "",
-          f"Clusters etiquetados: {len(out)} · dudosos: {int((out.estado == 'dudoso').sum()) if len(out) else 0} · "
-          f"gasto de esta corrida: {orr.spent:.4f} USD" + (f" · **FRENADO: {stopped}**" if stopped else ""), "",
-          "| Dominio | Descripción | Owners | Repos de control | Librerías existentes (PyPI) | Ejemplos |",
-          "|---|---|---|---|---|---|"]
-    for r in conf.sort_values("owners", ascending=False).itertuples():
-        existing = "; ".join(x for x in r.librerias_verificadas.split("; ") if x and "inexistente" not in x) or "—"
-        md.append(f"| {r.dominio} | {r.descripcion_principal} | {r.owners} | {r.repos_control} | {existing} | "
-                  f"[1]({r.ejemplo_1}) · [2]({r.ejemplo_2}) |")
-    (OUT / "resumen_post.md").write_text("\n".join(md) + "\n")
-    print(f"escrito {OUT / 'etiquetado.csv'} y {OUT / 'resumen_post.md'} · gasto {orr.spent:.4f} USD")
+    if stopped:
+        print(f"etiquetado incompleto: {stopped}")
+    print(f"escrito {OUT / 'etiquetado.csv'} · gasto {orr.spent:.4f} USD (el resumen lo arma s9_resumen.py)")

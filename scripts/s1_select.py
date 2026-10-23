@@ -21,6 +21,7 @@ from datetime import date, timedelta
 import pandas as pd
 import requests
 
+from deps import dep_names, norm_pkg
 from common import ROOT, GitHub, cache_dir, gapfinder_conn, load_config, out_dir, stage
 
 cfg = load_config()
@@ -67,23 +68,6 @@ PAPER_README = re.compile(
     r"accepted (at|to|by) (neurips|iclr|icml|acl|emnlp|naacl|cvpr|iccv|eccv|aaai|kdd|sigir|colm))", re.I)
 
 PY_BYTES_PER_LINE = 35  # estimación gruesa: bytes de Python reportados por GitHub / líneas
-
-
-def norm_pkg(name: str) -> str:
-    return re.sub(r"[-_.]+", "-", name.strip().lower())
-
-
-def dep_names(texts: dict) -> set[str]:
-    """Extrae nombres de paquetes de requirements*.txt / pyproject / setup.py / setup.cfg / Pipfile."""
-    names = set()
-    for line in (texts.get("req") or "").splitlines() + (texts.get("pipfile") or "").splitlines():
-        m = re.match(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)", line.split("#")[0])
-        if m:
-            names.add(norm_pkg(m.group(1)))
-    blob = " ".join(texts.get(k) or "" for k in ("pyproject", "setuppy", "setupcfg"))
-    for m in re.finditer(r"""["'\s]([A-Za-z][A-Za-z0-9._-]*)\s*(?:[<>=!~\[;"',]|$)""", blob, re.M):
-        names.add(norm_pkg(m.group(1)))
-    return names
 
 
 def declared_package(texts: dict) -> str | None:
