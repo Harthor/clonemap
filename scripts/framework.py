@@ -15,7 +15,7 @@ from tree_sitter import Language, Parser
 
 FRAMEWORK_BASES = {
     # Django
-    "BaseCommand", "ModelForm", "Form", "Widget", "ModelAdmin", "MiddlewareMixin", "AppConfig",
+    "Model", "BaseCommand", "ModelForm", "Form", "Widget", "ModelAdmin", "MiddlewareMixin", "AppConfig",
     # vistas genéricas de Django
     "View", "TemplateView", "RedirectView", "ListView", "DetailView", "CreateView", "UpdateView",
     "DeleteView", "FormView", "ArchiveIndexView", "YearArchiveView", "MonthArchiveView", "DayArchiveView",

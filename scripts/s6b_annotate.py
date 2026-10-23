@@ -43,9 +43,10 @@ if __name__ == "__main__":
         cl.to_parquet(CLUSTERS)
 
         F["metodos_de_clases_framework"] = int(fw.sum())
-        fam = cl[(cl.owners_main >= R["specific_min_owners"]) & (cl.domain_q < R["max_q"])]
+        fam = cl[cl.owners_main >= R["specific_min_owners"]]
+        spec = fam[(fam.owners_control <= R["specific_max_ctrl"]) & ~fam.framework & ~fam.generic]
         for d in cfg["selection"]["domains"]:
-            F[f"enriquecidos_q<{R['max_q']}:{d}"] = int((fam.domain_main == d).sum())
+            F[f"especificos_(<= {R['specific_max_ctrl']} control):{d}"] = int((spec.domain_main == d).sum())
         F["  genericos"] = int(fam.generic.sum())
         F["  framework"] = int(fam.framework.sum())
         F["  genericos_y_framework"] = int((fam.generic & fam.framework).sum())

@@ -63,8 +63,18 @@ report:
   min_owners: 8
   examples_per_cluster: 5
   specific_min_owners: 8            # vista por dominio: owners del dominio principal
-  max_q: 0.05                       # q de Benjamini-Hochberg
+  specific_max_ctrl: 3              # "específico del dominio": <= N repos de control (reemplaza al filtro por q)
+  max_q: 0.05                       # q de Benjamini-Hochberg (informativo en la vista por dominio)
   laplace_alpha: 1
   generic_min_ctrl_prev: 0.03       # "genérico": >= 3 % de los owners de control aparecen en el cluster
   generic_max_enr_ctrl: 5.0         #   y además enriquecimiento vs control < este valor
   framework_min_frac: 0.6           # "idiomático del framework": >= 60 % métodos de clases base de Django/DRF
+
+label:                              # etapa 8 (OpenRouter); el único paso pago del proyecto
+  model_main: typesafe/jev-router   # "Jev" en el catálogo de OpenRouter: router con precio variable
+  model_second: anthropic/claude-haiku-5.5
+  top_n: 30                         # por dominio, específicos del dominio ordenados por owners
+  examples: 6
+  max_code_lines: 60
+  budget_usd: 2.0
+  min_balance_usd: 0.5

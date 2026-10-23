@@ -133,14 +133,16 @@ by_owners = cl[cl.owners >= R["min_owners"]].sort_values(["owners", "cohesion"],
 n1 = render("owners", [("", by_owners)], f"Ordenados por owners distintos (mínimo {R['min_owners']}).")
 
 def domain_sections(cl: pd.DataFrame) -> dict[str, pd.DataFrame]:
-    """Sección de cada cluster en la vista por dominio (completa, sin cortar en top N).
-    Precedencia: framework > genérico > dominio principal."""
-    spec = cl[(cl.owners_main >= R["specific_min_owners"]) & (cl.domain_q < R["max_q"])]
-    order = ["enrichment", "owners"]
-    out = {f"Enriquecidos en {d}": spec[(spec.domain_main == d) & ~spec.generic & ~spec.framework]
+    """Sección de cada cluster en la vista por dominio (completa, sin cortar en top N), ordenada por owners.
+    Base: >= specific_min_owners owners del dominio principal. Precedencia: framework > genérico > específico.
+    Específico del dominio = <= specific_max_ctrl repos de control. Enriquecimiento y q son solo informativos."""
+    base = cl[cl.owners_main >= R["specific_min_owners"]]
+    order = ["owners_main", "owners"]
+    out = {f"Específicos de {d}": base[(base.domain_main == d) & ~base.framework & ~base.generic
+                                         & (base.owners_control <= R["specific_max_ctrl"])]
            for d in cfg["selection"]["domains"]}
-    out["Idiomáticos del framework (métodos de clases base de Django/DRF)"] = spec[spec.framework]
-    out["Marcados como genéricos (presencia alta en el grupo control)"] = spec[spec.generic & ~spec.framework]
+    out["Idiomáticos del framework (métodos de clases base de Django/DRF)"] = base[base.framework]
+    out["Marcados como genéricos (presencia alta en el grupo control)"] = base[base.generic & ~base.framework]
     return {k: v.sort_values(order, ascending=False) for k, v in out.items()}
 
 
@@ -150,6 +152,6 @@ if __name__ == "__main__":
     secs = domain_sections(cl)
     per_sec = max(1, R["top_k"] // len(cfg["selection"]["domains"]))
     n2 = render("dominio", [(t, df.head(per_sec)) for t, df in secs.items()],
-                f"Solo clusters con ≥ {R['specific_min_owners']} owners del dominio principal y enriquecimiento significativo "
-                f"contra el control (q < {R['max_q']}), por sección (hasta {per_sec} por sección) y ordenados por enriquecimiento.")
+                f"Específicos del dominio = ≥ {R['specific_min_owners']} owners del dominio principal y ≤ {R['specific_max_ctrl']} "
+                f"repos de control; por sección (hasta {per_sec} por sección) y ordenados por owners. Enriquecimiento y q son informativos.")
     print(f"reporte: {VIEWS['owners']} ({n1} clusters), {VIEWS['dominio']} ({n2} clusters)")

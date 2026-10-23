@@ -17,11 +17,11 @@ p.add_argument("--top", type=int, default=10)
 p.add_argument("--k", type=int, default=6)
 args, _ = p.parse_known_args()
 
-top = domain_sections(cl)[f"Enriquecidos en {args.domain}"].head(args.top)
+top = domain_sections(cl)[f"Específicos de {args.domain}"].head(args.top)
 rng = random.Random(cfg["seed"])
 md = [f"# Revisión manual: top {args.top} clusters de {args.domain} ({cfg['mode']})", "",
-      f"Orden de la vista por dominio: enriquecimiento contra el control (≥{R['specific_min_owners']} owners del dominio, "
-      f"q<{R['max_q']}, sin genéricos ni idiomáticos del framework). {args.k} funciones por cluster, de owners distintos "
+      f"Orden de la vista por dominio: owners (≥{R['specific_min_owners']} owners del dominio, "
+      f"≤{R['specific_max_ctrl']} repos de control, sin genéricos ni idiomáticos del framework). {args.k} funciones por cluster, de owners distintos "
       f"del dominio, elegidas al azar (seed {cfg['seed']}), no las más cercanas al centroide.", ""]
 for i, c in enumerate(top.itertuples(), 1):
     sub = fn[(fn.topic == c.topic) & (fn.domain == args.domain)].sort_values("fid")
