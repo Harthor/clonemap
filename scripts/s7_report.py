@@ -134,13 +134,17 @@ n1 = render("owners", [("", by_owners)], f"Ordenados por owners distintos (míni
 
 def domain_sections(cl: pd.DataFrame) -> dict[str, pd.DataFrame]:
     """Sección de cada cluster en la vista por dominio (completa, sin cortar en top N), ordenada por owners.
-    Base: >= specific_min_owners owners del dominio principal. Precedencia: framework > genérico > específico.
+    Base: >= specific_min_owners owners del dominio principal. Precedencia: framework > genérico / no exclusivo > específico.
     Específico del dominio = <= specific_max_ctrl repos de control. Enriquecimiento y q son solo informativos."""
     base = cl[cl.owners_main >= R["specific_min_owners"]]
     order = ["owners_main", "owners"]
     out = {f"Específicos de {d}": base[(base.domain_main == d) & ~base.framework & ~base.generic
                                          & (base.owners_control <= R["specific_max_ctrl"])]
            for d in cfg["selection"]["domains"]}
+    # Enriquecido no exclusivo: aparece también en el control (> specific_max_ctrl repos) pero mucho más en el dominio
+    # (cociente >= generic_max_enr_ctrl); no entra en "específicos" ni en "genéricos".
+    out["Enriquecidos no exclusivos (más de 3 repos de control, cociente ≥×5)"] = base[
+        ~base.framework & (base.owners_control > R["specific_max_ctrl"]) & (base.enrichment >= R["generic_max_enr_ctrl"])]
     out["Idiomáticos del framework (métodos de clases base de Django/DRF)"] = base[base.framework]
     out["Marcados como genéricos (presencia alta en el grupo control)"] = base[base.generic & ~base.framework]
     return {k: v.sort_values(order, ascending=False) for k, v in out.items()}

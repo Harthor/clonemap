@@ -71,11 +71,14 @@ report:
   framework_min_frac: 0.6           # "idiomático del framework": >= 60 % métodos de clases base de Django/DRF
 
 label:                              # etapa 8 (OpenRouter); el único paso pago del proyecto
-  model_main: typesafe/jev-router   # "Jev" en el catálogo de OpenRouter: router con precio variable
+  jev_model: typesafe/jev-1.13      # fijo, por /api/v1/systemone (como gapfinder); no jev-router
   model_second: anthropic/claude-haiku-5.5
   top_n: 30                         # por dominio, específicos del dominio ordenados por owners
+  top_nonexclusive: 10              # de "enriquecidos no exclusivos", por owners
   examples: 6
   max_code_lines: 60
-  max_tokens: 2000                  # incluye razonamiento: con 400 Haiku 5.5 a veces no llegaba a responder
-  budget_usd: 2.0
+  max_tokens: 2000                  # Haiku; incluye razonamiento: con 400 Haiku 5.5 a veces no llegaba a responder
+  jev_ambiguous_margin: 0.15        # categoría de Jev "ambigua" si la 1ª supera a la 2ª por menos que esto
+  jev_lib_min_prob: 0.7             # librería aceptada si Jev le da >= esto
+  budget_usd: 1.0
   min_balance_usd: 0.5
