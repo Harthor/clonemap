@@ -76,5 +76,6 @@ label:                              # etapa 8 (OpenRouter); el único paso pago 
   top_n: 30                         # por dominio, específicos del dominio ordenados por owners
   examples: 6
   max_code_lines: 60
+  max_tokens: 2000                  # incluye razonamiento: con 400 Haiku 5.5 a veces no llegaba a responder
   budget_usd: 2.0
   min_balance_usd: 0.5

@@ -9,6 +9,7 @@ Modelo principal + segunda pasada con otro modelo, mismo prompt: "confirmado" si
 Gasto: se pide a OpenRouter el costo real de cada llamada (usage.include) y se corta si el acumulado llega
 a `budget_usd` o si el saldo de la cuenta baja de `min_balance_usd`. Respuestas cacheadas en
 data/cache/llm_labels.sqlite (re-correr no vuelve a pagar).
+`max_tokens` incluye los tokens de razonamiento de los modelos que razonan (Haiku 5.5 se comía 400 enteros).
 Key: OPENROUTER_API_KEY en el entorno o en clonemap/.env (gitignored); no se imprime ni se copia.
 Salidas: data/<modo>/etiquetado.csv, data/<modo>/resumen_post.md
 Uso: uv run scripts/s8_label.py [--mode full] [--dry-run]
@@ -92,7 +93,7 @@ class OpenRouter:
     def chat(self, model: str, prompt: str) -> tuple[str, float]:
         self.check()
         r = self.s.post("https://openrouter.ai/api/v1/chat/completions", timeout=180, json={
-            "model": model, "temperature": 0, "max_tokens": 400, "usage": {"include": True},
+            "model": model, "temperature": 0, "max_tokens": L["max_tokens"], "usage": {"include": True},
             "messages": [{"role": "user", "content": prompt}]})
         r.raise_for_status()
         d = r.json()
@@ -163,7 +164,8 @@ if __name__ == "__main__":
             for role, model in (("principal", L["model_main"]), ("segundo", L["model_second"])):
                 k = hashlib.sha1(f"{model}\n{prompt}".encode()).hexdigest()
                 hit = db.execute("SELECT response FROM calls WHERE k=?", (k,)).fetchone()
-                if hit:
+                # una respuesta cacheada inválida (p. ej. cortada) se vuelve a pedir
+                if hit and parse_label(hit[0])["categoria"] != "sin_respuesta_valida":
                     text = hit[0]
                 else:
                     text, cost = orr.chat(model, prompt)
