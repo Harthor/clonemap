@@ -19,4 +19,5 @@ dependencies = [
     "tree-sitter-python>=0.25.0",
     "typesafe-sdk==0.7.2",
     "umap-learn>=0.5.12",
+    "websockets>=17.3",
 ]

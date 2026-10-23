@@ -3,8 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- static:head (lo escribe scripts/s10_export_site.py) -->
 <title>clonemap — what developers keep rewriting</title>
-<meta name="description" content="28% of LLM apps write their own parser for the JSON the model returns. A study of 3,075 GitHub projects.">
+<meta name="description" content="In regular Python projects it&#x27;s 4%. A library for this exists (json_repair); only 2% of those apps use it. A look at what developers keep rewriting in 3,075 GitHub projects.">
+<link rel="canonical" href="https://harthor.github.io/clonemap/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="clonemap">
+<meta property="og:title" content="28% of LLM apps write their own parser for the JSON the model returns">
+<meta property="og:description" content="In regular Python projects it&#x27;s 4%. A library for this exists (json_repair); only 2% of those apps use it. A look at what developers keep rewriting in 3,075 GitHub projects.">
+<meta property="og:url" content="https://harthor.github.io/clonemap/">
+<meta property="og:image" content="https://harthor.github.io/clonemap/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="28% of LLM apps vs 4% of regular Python projects write their own parser for JSON from model replies.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="28% of LLM apps write their own parser for the JSON the model returns">
+<meta name="twitter:description" content="In regular Python projects it&#x27;s 4%. A library for this exists (json_repair); only 2% of those apps use it. A look at what developers keep rewriting in 3,075 GitHub projects.">
+<meta name="twitter:image" content="https://harthor.github.io/clonemap/og.png">
+<!-- /static:head -->
 <style>
 :root {
   --bg: #fafaf8; --surface: #ffffff; --fg: #1b1b19; --muted: #6a6963; --line: #e5e3dd; --soft: #f2f1ec;
@@ -43,7 +59,7 @@ h2 { font-size: 24px; line-height: 1.25; margin: 0 0 8px; letter-spacing: -0.01e
 
 /* hero */
 .hero { padding: 64px 0 8px; }
-.hero h1 { font-size: clamp(28px, 4.4vw, 44px); line-height: 1.15; letter-spacing: -0.02em; margin: 0; max-width: 22ch; font-weight: 700; }
+.hero h1, .hero .title { font-size: clamp(28px, 4.4vw, 44px); line-height: 1.15; letter-spacing: -0.02em; margin: 0; max-width: 22ch; font-weight: 700; }
 .hero h1 em { font-style: normal; color: var(--accent); }
 .hero p.lead { font-size: 19px; color: var(--muted); margin: 20px 0 0; max-width: 58ch; }
 .numbers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin: 48px 0 0; padding: 28px 0 0; border-top: 1px solid var(--line); }
@@ -158,12 +174,61 @@ footer { border-top: 1px solid var(--line); margin-top: 72px; padding: 24px 0 48
 
   <main>
     <div id="findings" class="panel" role="tabpanel" aria-labelledby="tab-findings">
-      <section class="hero" id="hero" aria-live="polite"></section>
+      <section class="hero" id="hero">
+<!-- static:hero (lo escribe scripts/s10_export_site.py) -->
+<h1><em>28% of LLM apps</em> write their own parser for the JSON the model returns.</h1>
+<p class="lead">In regular Python projects it's 4%. A library for this exists (json_repair); only 2% of those apps use it.</p>
+<div class="numbers">
+  <div><b>3,075</b><span>GitHub projects analyzed</span></div>
+  <div><b>420,391</b><span>functions read and compared</span></div>
+  <div><b>$0.11</b><span>total cost of the analysis</span></div>
+</div>
+<!-- /static:hero -->
+      </section>
 
       <section class="block">
         <h2>What developers keep rewriting</h2>
         <p class="sub">Pieces of code that many unrelated projects wrote from scratch, each in its own way. Tap a card to see real examples.</p>
-        <div class="cards" id="cards"></div>
+        <div class="cards" id="cards">
+<!-- static:cards (lo escribe scripts/s10_export_site.py) -->
+<button type="button" class="card" data-id="2" aria-label="Extract structured data from AI replies: see details">
+  <span class="kicker">LLM apps</span>
+  <h3>Extract structured data from AI replies</h3>
+  <div class="stat"><div><b>496</b><span>developers wrote it</span></div><div><b>×7</b><span>vs. regular Python</span></div></div>
+  <div class="lib"><span>Existing: json_repair — 2% of these projects use it</span></div>
+</button>
+<button type="button" class="card" data-id="33" aria-label="Breaking long text into pieces: see details">
+  <span class="kicker">LLM apps</span>
+  <h3>Breaking long text into pieces</h3>
+  <div class="stat"><div><b>207</b><span>developers wrote it</span></div><div><b>×9</b><span>vs. regular Python</span></div></div>
+  <div class="lib"><span>Existing: langchain-text-splitters, chonkie, semchunk — 10% of these projects use one</span></div>
+</button>
+<button type="button" class="card" data-id="165" aria-label="Save chat messages to history: see details">
+  <span class="kicker">LLM apps</span>
+  <h3>Save chat messages to history</h3>
+  <div class="stat"><div><b>105</b><span>developers wrote it</span></div><div><b>×9</b><span>vs. regular Python</span></div></div>
+  <div class="lib"><span class="none">No standard library fits</span></div>
+</button>
+<button type="button" class="card" data-id="153" aria-label="Tracking token usage in AI calls: see details">
+  <span class="kicker">LLM apps</span>
+  <h3>Tracking token usage in AI calls</h3>
+  <div class="stat"><div><b>88</b><span>developers wrote it</span></div><div><b>×5</b><span>vs. regular Python</span></div></div>
+  <div class="lib"><span class="none">No standard library fits</span></div>
+</button>
+<button type="button" class="card" data-id="220" aria-label="Checking uploaded files before accepting them: see details">
+  <span class="kicker">Django apps</span>
+  <h3>Checking uploaded files before accepting them</h3>
+  <div class="stat"><div><b>50</b><span>developers wrote it</span></div><div><b>×4</b><span>vs. regular Python</span></div></div>
+  <div class="lib"><span>Existing: filetype, python-magic, puremagic — 21% of these projects use one</span></div>
+</button>
+<button type="button" class="card" data-id="779" aria-label="Sending password reset emails: see details">
+  <span class="kicker">Django apps</span>
+  <h3>Sending password reset emails</h3>
+  <div class="stat"><div><b>41</b><span>developers wrote it</span></div><div><b>×4</b><span>vs. regular Python</span></div></div>
+  <div class="lib"><span>Existing: django-allauth, django-rest-passwordreset — 18% of these projects use one</span></div>
+</button>
+<!-- /static:cards -->
+        </div>
       </section>
 
       <section class="block why">
@@ -202,7 +267,7 @@ footer { border-top: 1px solid var(--line); margin-top: 72px; padding: 24px 0 48
 
     <div id="method" class="panel" role="tabpanel" aria-labelledby="tab-method" hidden>
       <section class="hero">
-        <h1>How this was measured</h1>
+        <h2 class="title">How this was measured</h2>
         <p class="lead">The idea: if many unrelated developers write the same piece of code by hand, something may be missing — or something
           exists and is not being found. Nobody has to ask for the library; the code shows the need.</p>
       </section>
@@ -277,30 +342,13 @@ function libraryLine(c, prefix = true) {
   return el("span", {}, prefix ? `Existing: ${names}` : names, used);
 }
 
-function renderHero(d) {
-  const h = d.headline, L = h.label, r = d.run;
-  document.getElementById("hero").replaceChildren(
-    el("h1", {}, el("em", { text: `${Math.round(h.pct_domain)}% of LLM apps` }), " write their own parser for the JSON the model returns."),
-    el("p", { class: "lead", text: `In regular Python projects it's ${Math.round(h.pct_control)}%. A library for this exists (${libName(L.libraries[0])}); only ${Math.round(L.already_declared_pct)}% of those apps use it.` }),
-    el("div", { class: "numbers" },
-      el("div", {}, el("b", { text: fmt(r.repos.llm + r.repos.django + r.repos.control) }), el("span", { text: "GitHub projects analyzed" })),
-      el("div", {}, el("b", { text: fmt(r.functions) }), el("span", { text: "functions read and compared" })),
-      el("div", {}, el("b", { text: `$${r.llm_cost_usd.toFixed(2)}` }), el("span", { text: "total cost of the analysis" }))));
-}
-
-function renderCards(d) {
-  const utils = d.clusters.filter(isUtility).sort((a, b) => b.owners - a.owners);
-  document.getElementById("cards").replaceChildren(...utils.map(c => {
-    const card = el("button", { type: "button", class: "card", "aria-label": `${c.label.name}: see details` },
-      el("span", { class: "kicker", text: `${APP[c.domain]} apps` }),
-      el("h3", { text: c.label.name }),
-      el("div", { class: "stat" },
-        el("div", {}, el("b", { text: fmt(c.owners) }), el("span", { text: "developers wrote it" })),
-        el("div", {}, el("b", { text: times(c) }), el("span", { text: "vs. regular Python" }))),
-      el("div", { class: "lib" }, libraryLine(c)));
-    card.addEventListener("click", () => openDetail(c));
-    return card;
-  }));
+// El hero, los números y las tarjetas vienen escritos en el HTML (s10_export_site.py); acá solo se conectan los clics.
+function wireCards(d) {
+  const byId = new Map(d.clusters.map(c => [String(c.id), c]));
+  document.querySelectorAll(".card[data-id]").forEach(card => {
+    const c = byId.get(card.dataset.id);
+    if (c) card.addEventListener("click", () => openDetail(c));
+  });
 }
 
 let DATA;
@@ -393,11 +441,11 @@ document.getElementById("detail").addEventListener("click", e => { if (e.target.
 
 fetch(new URL("data.json", document.baseURI))
   .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-  .then(d => { DATA = d; renderHero(d); renderCards(d); renderTable(); renderMethod(d); document.getElementById("gen").textContent = d.generated; })
+  .then(d => { DATA = d; wireCards(d); renderTable(); renderMethod(d); document.getElementById("gen").textContent = d.generated; })
   .catch(err => {
-    document.getElementById("hero").replaceChildren(el("div", { class: "error" },
-      el("b", { text: "The data could not be loaded. " }),
-      `Browsers block it when this page is opened as a local file. Serve the folder instead (for example "python3 -m http.server" inside site/) or visit the published page. (${err.message})`));
+    document.getElementById("rows").replaceChildren(el("tr", {}, el("td", { colspan: "5", class: "error" },
+      el("b", { text: "The cluster table could not be loaded. " }),
+      `Browsers block it when this page is opened as a local file. Serve the folder instead (for example "python3 -m http.server" inside site/) or visit the published page. (${err.message})`)));
   });
 </script>
 </body>

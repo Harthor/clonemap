@@ -31,7 +31,8 @@ config loading) and from the idiomatic boilerplate a framework asks you to write
 | 7 | Report | `s7_report.py` | Local HTML views by owners and by domain. |
 | 8 | Label | `s8_label.py`, `s8b_describe_en.py` | Two models label the top clusters (below); Haiku also writes a plain-English name and one-line description for the explorer. |
 | 9 | Summarize | `s9_resumen.py` | Confirmed utilities and whether their repos already declare a library that solves them. |
-| 10 | Export | `s10_export_site.py` | `site/data.json` for the explorer. |
+| 10 | Export | `s10_export_site.py` | `site/data.json` for the explorer, plus the static HTML of its head, headline, numbers and cards. |
+| 11 | Preview image | `s11_og_image.py` | `site/og.png` (1200×630) for link previews, rendered with headless Chrome. |
 
 Every stage is a separate, idempotent script that caches its output and reads its parameters from `config.yaml`.
 Seed 42 throughout.
@@ -125,6 +126,7 @@ scripts/run_full.sh                         # stages 1–7 (incl. 6b) in full mo
 uv run scripts/s8_label.py --mode full      # paid: needs OPENROUTER_API_KEY in .env
 uv run scripts/s9_resumen.py --mode full
 uv run scripts/s10_export_site.py --mode full
+uv run scripts/s11_og_image.py             # needs Google Chrome
 ```
 
 Each script also accepts `--mode pilot` (200 repos, outputs in `data/pilot/`) and `--force` to redo a finished stage.

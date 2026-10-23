@@ -91,4 +91,6 @@ site:                               # etapa 10: site/data.json para el explorado
   site_examples: 5
   site_snippet_lines: 5             # de código ajeno solo la firma y como mucho 5 líneas + link
   headline_topic: 2                 # cluster de parseo de JSON de respuestas de LLM
+  site_url: https://harthor.github.io/clonemap/   # URL pública (canonical, og:url, og:image)
+  chrome: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"   # para s11_og_image.py
   llm_cost_usd: 0.106               # gasto real de OpenRouter: etiquetado + descripciones en inglés (saldo 3.9253 -> 3.8196)
