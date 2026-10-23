@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>clonemap — rewritten code explorer</title>
+<meta name="description" content="Which functions do thousands of Django and LLM apps keep rewriting by hand? A probe over 3,073 GitHub repos.">
+<style>
+:root {
+  --bg: #fbfbf9; --surface: #ffffff; --fg: #1c1c1a; --muted: #67665f; --line: #e4e2dc; --code: #f3f2ed;
+  --accent: #2f5d8a; --accent-soft: #e6eef6; --dom: #2f5d8a; --ctrl: #b4b2a9; --ok: #2e7d4f; --warn: #a3621b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151514; --surface: #1d1d1b; --fg: #e9e7e1; --muted: #9c9a92; --line: #2e2d2a; --code: #222220;
+    --accent: #8fb6de; --accent-soft: #23303d; --dom: #8fb6de; --ctrl: #5d5c56; --ok: #6cc48f; --warn: #e0a35c;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151514; --surface: #1d1d1b; --fg: #e9e7e1; --muted: #9c9a92; --line: #2e2d2a; --code: #222220;
+  --accent: #8fb6de; --accent-soft: #23303d; --dom: #8fb6de; --ctrl: #5d5c56; --ok: #6cc48f; --warn: #e0a35c;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+header { padding: 28px 0 8px; }
+h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2 { font-size: 19px; margin: 28px 0 10px; }
+h3 { font-size: 16px; margin: 20px 0 6px; }
+.lede { color: var(--muted); margin: 0; max-width: 62ch; }
+nav.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-top: 18px; }
+nav.tabs button { font: inherit; background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; color: var(--muted); cursor: pointer; }
+nav.tabs button[aria-selected="true"] { color: var(--fg); border-color: var(--accent); font-weight: 600; }
+.panel[hidden] { display: none; }
+
+.hero { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-top: 20px; }
+.hero .kicker { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.hero h2 { margin: 4px 0 10px; font-size: 21px; }
+.hero .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 14px 0; }
+.fact b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+.fact span { color: var(--muted); font-size: 13px; }
+.bars { margin: 10px 0 4px; }
+.bar { display: grid; grid-template-columns: 110px 1fr 52px; align-items: center; gap: 8px; font-size: 13px; margin: 4px 0; }
+.bar .track { height: 10px; background: var(--code); border-radius: 5px; overflow: hidden; }
+.bar .fill { height: 100%; border-radius: 5px; }
+.bar .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.stats { display: flex; flex-wrap: wrap; gap: 8px 22px; color: var(--muted); font-size: 13px; margin: 16px 0 0; }
+.stats b { color: var(--fg); font-variant-numeric: tabular-nums; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 12px; }
+.controls select, .controls input[type="search"] { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); }
+.controls input[type="search"] { flex: 1 1 200px; min-width: 0; }
+.controls label { font-size: 14px; display: flex; gap: 6px; align-items: center; }
+.count { color: var(--muted); font-size: 13px; margin-left: auto; }
+
+table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; font-size: 14px; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; background: var(--surface); }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tbody tr { cursor: pointer; }
+tbody tr:hover, tbody tr:focus { background: var(--accent-soft); outline: none; }
+.desc { min-width: 300px; max-width: 48ch; }
+td .tag { white-space: normal; }
+.terms { color: var(--muted); font-size: 12px; font-family: ui-monospace, Menlo, monospace; }
+.tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.tag.ok { color: var(--ok); border-color: currentColor; }
+.tag.warn { color: var(--warn); border-color: currentColor; }
+.mini { display: inline-flex; gap: 2px; align-items: flex-end; height: 18px; vertical-align: middle; margin-right: 6px; }
+.mini i { width: 7px; border-radius: 2px 2px 0 0; display: block; }
+.libs { font-size: 13px; }
+
+dialog { width: min(820px, 100vw - 24px); max-height: calc(100dvh - 32px); overflow: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 12px; padding: 0; background: var(--surface); color: var(--fg); }
+dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+.dlg-head { position: sticky; top: 0; background: var(--surface); padding: 14px 16px 10px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: flex-start; }
+.dlg-head h3 { margin: 0; flex: 1; font-size: 16px; }
+.dlg-head button { font: inherit; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.dlg-body { padding: 4px 16px 16px; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 14px; margin: 10px 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; }
+.ex { margin: 12px 0; }
+.ex .where { font-size: 13px; overflow-wrap: anywhere; }
+.ex pre { background: var(--code); border-radius: 8px; padding: 10px 12px; overflow-x: auto; font-size: 12.5px; line-height: 1.45; margin: 6px 0 0; }
+.note { color: var(--muted); font-size: 13px; }
+
+.method ol.steps { padding-left: 20px; }
+.method ol.steps li { margin: 6px 0; }
+.method .box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 12px 0; }
+.method ul { padding-left: 20px; }
+footer { color: var(--muted); font-size: 13px; padding: 28px 0 40px; }
+
+@media (max-width: 680px) {
+  h1 { font-size: 22px; }
+  table, thead, tbody, tr, td { display: block; width: 100%; }
+  thead { display: none; }
+  table { border: 0; background: none; }
+  tbody tr { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin: 0 0 10px; padding: 10px 12px; }
+  td { border: 0; padding: 2px 0; }
+  td.num { text-align: left; }
+  td[data-label]::before { content: attr(data-label) ": "; color: var(--muted); font-size: 12px; }
+  .desc { min-width: 0; max-width: none; font-weight: 600; }
+  .bar { grid-template-columns: 90px 1fr 46px; }
+  .count { margin-left: 0; width: 100%; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>clonemap</h1>
+    <p class="lede">Which functions do many independent apps keep rewriting by hand? A probe over Django and LLM apps on GitHub,
+      compared against a control group of ordinary Python repos. Clusters are candidates for review, not proof of a missing library.</p>
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="tab-findings" aria-controls="findings" aria-selected="true">Findings</button>
+      <button role="tab" id="tab-method" aria-controls="method" aria-selected="false">Method</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="findings" class="panel" role="tabpanel" aria-labelledby="tab-findings">
+      <div class="hero" id="hero"></div>
+      <div class="stats" id="stats"></div>
+
+      <h2>Clusters</h2>
+      <div class="controls">
+        <select id="f-domain" aria-label="Domain">
+          <option value="">All domains</option><option value="llm">LLM apps</option><option value="django">Django apps</option>
+        </select>
+        <select id="f-section" aria-label="Section">
+          <option value="">All sections</option>
+          <option value="specific">Domain-specific</option>
+          <option value="nonexclusive">Enriched, not exclusive</option>
+          <option value="generic">Generic (common in control)</option>
+          <option value="framework">Framework idiom</option>
+        </select>
+        <label><input type="checkbox" id="f-confirmed"> Confirmed reimplemented utilities only</label>
+        <input type="search" id="f-q" placeholder="Search description or terms" aria-label="Search">
+        <span class="count" id="count"></span>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Cluster</th><th>Domain</th><th>Section</th><th class="num">Owners</th>
+          <th>Domain vs control</th><th>Label</th><th>Libraries (accepted)</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <p class="note">Descriptions come from Claude Haiku and are in Spanish; only the 65 labeled clusters have one, the rest show their
+        most distinctive identifiers. Click a row for examples: each shows at most the first 5 lines of the function and links to the file on GitHub.</p>
+    </section>
+
+    <section id="method" class="panel method" role="tabpanel" aria-labelledby="tab-method" hidden>
+      <h2>The hypothesis</h2>
+      <p>If many unrelated owners rewrite the same functionality with different code, a library may be missing, or an existing one
+        is not being found. This is a supply-side signal: nobody asked for the library, but the code shows the need.</p>
+
+      <h2>Pipeline</h2>
+      <ol class="steps" id="steps"></ol>
+
+      <h2>The control group</h2>
+      <div class="box" id="control-box"></div>
+
+      <h2>The argparse problem</h2>
+      <div class="box">
+        <p>In the 200-repo pilot, the first domain view ranked clusters by how much of their owners came from one domain (≥80 %).
+          LLM apps were 65 % of all owners, so generic Python utilities — <code>main()</code> with argparse, logging setup, YAML config loading — looked
+          "LLM-specific" just because most repos were LLM apps. Four of them were in the LLM top 20.</p>
+        <p>Fix, in three steps: (1) enrichment against a base rate with Laplace smoothing and Benjamini-Hochberg q-values; (2) a control
+          group of ordinary Python repos, so enrichment is measured as <em>share of domain repos</em> ÷ <em>share of control repos</em>;
+          (3) clusters present in many control repos are flagged <em>generic</em> and listed apart. argparse, logging and YAML now sit
+          in the generic section (they appear in 7–12 % of control repos).</p>
+        <p>The final view keeps it simple: a cluster is <em>domain-specific</em> if it has ≥ <span class="p-min-owners"></span> owners in its
+          domain and ≤ <span class="p-max-ctrl"></span> control repos. Enrichment and q are shown, not used as filters: with 300 control
+          repos, a cluster needs ~30 LLM owners before any test can reach significance.</p>
+      </div>
+
+      <h2>Labeling</h2>
+      <div class="box">
+        <p>The top clusters were labeled twice. <strong>Jev 1.13</strong> (TypeSafe, via OpenRouter's System One endpoint) scored four
+          propositions — SDK usage, framework idiom, reimplemented utility, other — and its category is the most probable one
+          (marked ambiguous if it beats the runner-up by less than <span class="p-margin"></span>). <strong>Claude Haiku</strong> answered
+          the same question as JSON, with a one-line description and up to three PyPI libraries. A label is <em>confirmed</em> when both
+          agree and Jev is not ambiguous.</p>
+        <p>Each library Haiku proposed was checked against the PyPI JSON API and scored by Jev ("this library directly solves the
+          need"); only libraries that exist and score ≥ <span class="p-lib"></span> are kept. "Already declared" is the share of the
+          cluster's repos that list one of them in their declared dependencies.</p>
+      </div>
+
+      <h2>Limits</h2>
+      <ul id="limits"></ul>
+    </section>
+  </main>
+
+  <footer>Data generated <span id="gen"></span>. Code snippets belong to their authors and link to the exact commit on GitHub.</footer>
+</div>
+
+<dialog id="detail" aria-labelledby="d-title">
+  <div class="dlg-head"><h3 id="d-title"></h3><button type="button" id="d-close">Close</button></div>
+  <div class="dlg-body" id="d-body"></div>
+</dialog>
+
+<script>
+const SECTION = { specific: "Domain-specific", nonexclusive: "Enriched, not exclusive", generic: "Generic", framework: "Framework idiom" };
+const DOMAIN = { llm: "LLM", django: "Django" };
+const CAT = { uso_sdk: "SDK usage", idiomatico_framework: "framework idiom", utilidad_reimplementada: "reimplemented utility", otro: "other" };
+const fmt = n => n.toLocaleString("en-US");
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else e.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+};
+const isConfirmedUtility = c => c.label && c.label.status === "confirmado" && c.label.jev === "utilidad_reimplementada";
+const title = c => c.label ? c.label.description : c.terms.slice(0, 5).join(", ");
+
+function bar(label, pct, color, max) {
+  return el("div", { class: "bar" }, el("span", { text: label }),
+    el("div", { class: "track" }, el("div", { class: "fill", style: `width:${Math.max(1, pct / max * 100)}%;background:${color}` })),
+    el("span", { class: "num", text: pct.toFixed(1) + " %" }));
+}
+
+function mini(c) {
+  const max = Math.max(c.pct_domain, c.pct_control, 1);
+  return el("span", { class: "mini", title: `${c.pct_domain} % of ${DOMAIN[c.domain]} repos vs ${c.pct_control} % of control repos` },
+    el("i", { style: `height:${Math.max(2, 18 * c.pct_domain / max)}px;background:var(--dom)` }),
+    el("i", { style: `height:${Math.max(2, 18 * c.pct_control / max)}px;background:var(--ctrl)` }));
+}
+
+function labelTag(c) {
+  if (!c.label) return el("span", { class: "tag", text: "not labeled" });
+  const cat = CAT[c.label.jev] + (c.label.jev_ambiguous ? " (ambiguous)" : "");
+  return c.label.status === "confirmado" ? el("span", { class: "tag ok", text: cat })
+    : el("span", { class: "tag warn", text: `${CAT[c.label.jev]} / ${CAT[c.label.haiku] || c.label.haiku}`, title: "Jev and Haiku disagree, or Jev is ambiguous" });
+}
+
+function hero(d) {
+  const h = d.headline, L = h.label;
+  const box = document.getElementById("hero");
+  const max = Math.max(h.pct_domain, h.pct_control);
+  box.append(
+    el("div", { class: "kicker", text: "Headline finding" }),
+    el("h2", { text: `${fmt(h.owners)} LLM apps write their own parser for JSON inside model output` }),
+    el("p", { text: "Stripping markdown fences, skipping <think> blocks, finding the outermost braces, retrying json.loads — each repo does it with its own code. It also shows up in ordinary Python repos, but far less often." }),
+    el("div", { class: "bars" }, bar("LLM apps", h.pct_domain, "var(--dom)", max), bar("Control repos", h.pct_control, "var(--ctrl)", max)),
+    el("div", { class: "facts" },
+      el("div", { class: "fact" }, el("b", { text: `×${h.enrichment}` }), el("span", { text: "more common in LLM apps than in control repos" })),
+      el("div", { class: "fact" }, el("b", { text: L.libraries.map(x => x.split("==")[0]).join(", ") || "—" }), el("span", { text: "library accepted by Jev as a direct solution" })),
+      el("div", { class: "fact" }, el("b", { text: L.already_declared_pct != null ? `${L.already_declared_pct} %` : "—" }), el("span", { text: `of these repos already declare it (${L.already_declared})` }))),
+    el("button", { type: "button", class: "tag", style: "cursor:pointer;font-size:13px;padding:4px 10px", text: "See examples" }));
+  box.querySelector("button").addEventListener("click", () => openDetail(h));
+  const r = d.run;
+  document.getElementById("stats").append(
+    ...[[fmt(r.repos.llm), "LLM apps"], [fmt(r.repos.django), "Django apps"], [fmt(r.repos.control), "control repos"],
+      [fmt(r.functions), "functions parsed"], [fmt(r.clusters), "clusters"], [`$${r.llm_cost_usd.toFixed(2)}`, "LLM labeling cost"]]
+      .map(([n, t]) => el("span", {}, el("b", { text: n }), " " + t)));
+}
+
+let DATA;
+function render() {
+  const dom = document.getElementById("f-domain").value, sec = document.getElementById("f-section").value;
+  const conf = document.getElementById("f-confirmed").checked, q = document.getElementById("f-q").value.trim().toLowerCase();
+  const rows = DATA.clusters.filter(c => (!dom || c.domain === dom) && (!sec || c.section === sec) && (!conf || isConfirmedUtility(c))
+    && (!q || (title(c) + " " + c.terms.join(" ")).toLowerCase().includes(q)));
+  const tb = document.getElementById("rows");
+  tb.replaceChildren(...rows.map(c => {
+    const libs = c.label && c.label.libraries.length ? c.label.libraries.map(x => x.split("==")[0]).join(", ") : "—";
+    const tr = el("tr", { tabindex: "0" },
+      el("td", { class: "desc" }, el("div", { text: title(c) }), c.label ? el("div", { class: "terms", text: c.terms.slice(0, 5).join(" · ") }) : null),
+      el("td", { "data-label": "Domain", text: DOMAIN[c.domain] }),
+      el("td", { "data-label": "Section", text: SECTION[c.section] }),
+      el("td", { class: "num", "data-label": "Owners", text: fmt(c.owners) }),
+      el("td", { "data-label": "Domain vs control" }, mini(c), `${c.pct_domain} % vs ${c.pct_control} %`),
+      el("td", { "data-label": "Label" }, labelTag(c)),
+      el("td", { class: "libs", "data-label": "Libraries", text: libs }));
+    tr.addEventListener("click", () => openDetail(c));
+    tr.addEventListener("keydown", e => { if (e.key === "Enter") openDetail(c); });
+    return tr;
+  }));
+  document.getElementById("count").textContent = `${rows.length} of ${DATA.clusters.length} clusters`;
+}
+
+function openDetail(c) {
+  document.getElementById("d-title").textContent = title(c);
+  const body = document.getElementById("d-body");
+  const kv = el("dl", { class: "kv" });
+  const add = (k, v) => kv.append(el("dt", { text: k }), el("dd", {}, v));
+  add("Domain · section", `${DOMAIN[c.domain]} · ${SECTION[c.section]}`);
+  add("Owners", `${fmt(c.owners)} ${DOMAIN[c.domain]} repos (${c.pct_domain} %) · ${c.owners_control} control repos (${c.pct_control} %)`);
+  add("Enrichment vs control", `×${c.enrichment}`);
+  add("Identifiers", el("span", { class: "terms", text: c.terms.join(" · ") }));
+  if (c.label) {
+    const L = c.label, p = L.jev_probs;
+    add("Label", labelTag(c));
+    add("Jev 1.13 probabilities", Object.entries(p).map(([k, v]) => `${CAT[k]} ${v.toFixed(2)}`).join(" · "));
+    add("Haiku", CAT[L.haiku] || L.haiku);
+    add("Libraries accepted", L.libraries.length ? L.libraries.join(", ") : "—");
+    if (L.libraries_rejected.length) add("Rejected by Jev", L.libraries_rejected.join(", "));
+    if (L.libraries.length && L.already_declared_pct != null) add("Already declared", `${L.already_declared_pct} % of repos (${L.already_declared})`);
+  } else {
+    add("Label", "not labeled (only the top clusters were sent to the models)");
+  }
+  const exs = c.examples.map(x => el("div", { class: "ex" },
+    el("div", { class: "where" }, el("a", { href: x.url, target: "_blank", rel: "noopener", text: `${x.repo}/${x.path}` }), ` · ${x.name} · lines ${x.lines}`),
+    el("pre", {}, el("code", { text: x.snippet }))));
+  body.replaceChildren(kv, el("h3", { text: `Examples from ${c.examples.length} different owners` }),
+    el("p", { class: "note", text: "First lines of each function only; open the link for the full code." }), ...exs);
+  document.getElementById("detail").showModal();
+}
+
+function method(d) {
+  const r = d.run, p = d.params;
+  document.querySelectorAll(".p-min-owners").forEach(e => e.textContent = p.min_owners);
+  document.querySelectorAll(".p-max-ctrl").forEach(e => e.textContent = p.specific_max_ctrl);
+  document.querySelectorAll(".p-margin").forEach(e => e.textContent = p.jev_ambiguous_margin);
+  document.querySelectorAll(".p-lib").forEach(e => e.textContent = p.jev_lib_min_prob);
+  const steps = [
+    ["Select apps, not libraries.", ` From a pool of ${fmt(r.candidate_pool)} Python repos pushed in the last two years (an existing GitHub corpus plus the Search API, ≥3 stars), ${fmt(r.candidates_evaluated)} were checked one by one: no forks, one repo per owner, 2k–50k lines of Python, no tutorials or paper code, nothing published on PyPI. Domain comes from declared dependencies (django; openai, anthropic, langchain…).`],
+    ["Shallow, sparse clone.", " Only *.py files, pinned to the exact commit."],
+    ["Parse with tree-sitter.", ` ${fmt(r.functions)} functions and methods of ≥10 non-blank lines, excluding tests, migrations, vendored and generated code, and files copied verbatim across many repos.`],
+    ["Collapse copies.", ` MinHash + LSH groups near-duplicates (copy-paste) into one variant: ${fmt(r.variants)} distinct variants. The target is same intent, different code.`],
+    ["Embed code locally.", " Salesforce codet5p-110m-embedding (256-d) on an M2 laptop, ~27 functions/s."],
+    ["Cluster and score.", ` BERTopic (UMAP + HDBSCAN) into ${fmt(r.clusters)} clusters; each is counted by distinct owners and compared against the control group. The top ones were labeled by two models.`],
+  ];
+  document.getElementById("steps").replaceChildren(...steps.map(([b, t]) => el("li", {}, el("strong", { text: b }), t)));
+  document.getElementById("control-box").replaceChildren(
+    el("p", { text: `${fmt(r.repos.control)} ordinary Python repos, sampled at random from the existing GitHub corpus (not from the Search API) with the same filters (apps, size, no tutorials, not on PyPI), and verified to have neither Django nor LLM SDKs in their dependencies. They go through the same pipeline and are clustered together with the domain repos.` }),
+    el("p", { text: "For each cluster, the share of domain repos that contain it is compared with the share of control repos that do. Utilities every Python program needs show up in both; domain needs show up mostly in the domain." }));
+  const limits = [
+    `Only ${fmt(r.repos.control)} control repos. A cluster can be absent from the control by chance; significance tests need roughly 30 LLM owners (or 20 Django owners) before they can say anything.`,
+    "Star bias. The control comes from a corpus of repos with mostly ≥100 stars; most domain repos come from the Search API with ≥3 stars.",
+    "Jev's four probabilities are independent and do not sum to 1 (e.g. SDK usage 0.85 and reimplemented utility 0.51 for the same cluster), so about a third of the labels come out ambiguous.",
+    "Two models agreeing is not ground truth. Labels and library suggestions are leads for human review.",
+    "\"Already declared\" counts declared dependencies only; transitive ones (langchain-text-splitters via langchain) are not counted.",
+    "Size filter: Python size was estimated from GitHub's language bytes; 320 selected repos have fewer than 2k real lines.",
+    "Domain-specific uses a hard cut (≤3 control repos); clusters with 4+ control repos and a high ratio go to the \"enriched, not exclusive\" section, which is where the JSON-parsing finding lives.",
+  ];
+  document.getElementById("limits").replaceChildren(...limits.map(t => el("li", { text: t })));
+  document.getElementById("gen").textContent = d.generated;
+}
+
+document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("nav.tabs button").forEach(x => x.setAttribute("aria-selected", x === b));
+  document.querySelectorAll(".panel").forEach(p => p.hidden = p.id !== b.getAttribute("aria-controls"));
+}));
+document.getElementById("d-close").addEventListener("click", () => document.getElementById("detail").close());
+document.getElementById("detail").addEventListener("click", e => { if (e.target.id === "detail") e.target.close(); });
+["f-domain", "f-section", "f-confirmed", "f-q"].forEach(id => document.getElementById(id).addEventListener("input", render));
+
+fetch("data.json").then(r => r.json()).then(d => { DATA = d; hero(d); method(d); render(); })
+  .catch(err => { document.getElementById("hero").textContent = "Could not load data.json (" + err.message + "). Serve this folder over HTTP."; });
+</script>
+</body>
+</html>
