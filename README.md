@@ -29,7 +29,7 @@ config loading) and from the idiomatic boilerplate a framework asks you to write
 | 5 | Embed | `s5_embed.py` | `Salesforce/codet5p-110m-embedding` (256-d), locally on Apple MPS, truncated to 256 tokens, cached by content hash. |
 | 6 | Cluster | `s6_cluster.py`, `s6b_annotate.py` | BERTopic (UMAP + HDBSCAN), no LLM representation. Each cluster is counted by distinct owners and scored against the control group; framework idioms are flagged from the AST. |
 | 7 | Report | `s7_report.py` | Local HTML views by owners and by domain. |
-| 8 | Label | `s8_label.py` | Two models label the top clusters (below). |
+| 8 | Label | `s8_label.py`, `s8b_describe_en.py` | Two models label the top clusters (below); Haiku also writes a plain-English name and one-line description for the explorer. |
 | 9 | Summarize | `s9_resumen.py` | Confirmed utilities and whether their repos already declare a library that solves them. |
 | 10 | Export | `s10_export_site.py` | `site/data.json` for the explorer. |
 
@@ -138,8 +138,9 @@ Tokens are read at runtime from `.env` files (git-ignored) and never written els
 - **GitHub and PyPI APIs:** free (GitHub token for rate limits).
 - **Compute:** local, on an 8 GB M2 MacBook Air. Full run ≈ 5 h: selection 47 min (plus ~1 h of Search API paging, run once
   and cached), embeddings 3 h 44 min at ~27 functions/s, clustering 8 min, everything else minutes.
-- **LLM labeling:** **$0.072** in total on OpenRouter, measured from the account balance. That includes a first pass with a
-  routed model that was discarded because the responding model could not be verified, and retries of truncated responses.
+- **LLM labeling and descriptions:** **$0.106** in total on OpenRouter, measured from the account balance: $0.072 for
+  labeling (including a first pass with a routed model that was discarded because the responding model could not be
+  verified, and retries of truncated responses) and $0.034 for the plain-English names and descriptions shown in the explorer.
 
 ## Third-party code
 

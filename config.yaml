@@ -83,9 +83,12 @@ label:                              # etapa 8 (OpenRouter); el único paso pago 
   budget_usd: 1.0
   min_balance_usd: 0.5
 
+describe:                           # etapa 8b: nombres y descripciones en inglés simple para el sitio (Haiku)
+  budget_usd: 0.10
+
 site:                               # etapa 10: site/data.json para el explorador estático
   site_top_n: 30                    # por dominio y por sección de la vista por dominio
   site_examples: 5
   site_snippet_lines: 5             # de código ajeno solo la firma y como mucho 5 líneas + link
   headline_topic: 2                 # cluster de parseo de JSON de respuestas de LLM
-  llm_cost_usd: 0.072               # gasto real de OpenRouter de todo el etiquetado (saldo 3.9253 -> 3.8532)
+  llm_cost_usd: 0.106               # gasto real de OpenRouter: etiquetado + descripciones en inglés (saldo 3.9253 -> 3.8196)

@@ -266,9 +266,11 @@ def jev(orr, state: dict, questions: dict) -> dict[str, float]:
     return answers
 
 
-if __name__ == "__main__":
+def build_jobs() -> list[tuple]:
+    """Clusters a etiquetar con sus ejemplos: (sección, dominio, puesto, cluster, ejemplos). Determinístico (seed),
+    así cualquier pasada posterior (p. ej. s8b_describe_en.py) ve exactamente las mismas funciones."""
     secs = domain_sections(cl)
-    jobs = []  # (sección, dominio, puesto, cluster, ejemplos)
+    jobs = []
     for d in cfg["selection"]["domains"]:  # mismo orden y rng que la pasada anterior: la caché de Haiku vale
         rng = random.Random(cfg["seed"])
         for rank, c in enumerate(secs[SEC_SPECIFIC.format(d=d)].head(L["top_n"]).itertuples(), 1):
@@ -276,6 +278,11 @@ if __name__ == "__main__":
     rng = random.Random(cfg["seed"])
     for rank, c in enumerate(secs[SEC_NONEXCL].head(L["top_nonexclusive"]).itertuples(), 1):
         jobs.append(("enriquecido no exclusivo", c.domain_main, rank, c, examples(c, c.domain_main, rng)))
+    return jobs
+
+
+if __name__ == "__main__":
+    jobs = build_jobs()
     print(f"{len(jobs)} clusters")
     if args.dry_run:
         print(json.dumps(jev_state(jobs[0][4], jobs[0][1]))[:1200])

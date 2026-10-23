@@ -1,6 +1,7 @@
 """Etapa 10: exporta site/data.json para el explorador estático (site/index.html, GitHub Pages).
 
-Incluye solo lo necesario: por dominio, el top `site_top_n` por owners de cada sección de la vista por dominio
+Textos públicos en inglés: nombre y descripción de la etapa 8b (las descripciones de la etapa 8 están en español
+y no se exportan). Incluye solo lo necesario: por dominio, el top `site_top_n` por owners de cada sección de la vista por dominio
 (específico, enriquecido no exclusivo, genérico, framework), más todos los clusters etiquetados.
 Por cluster: descripción (Haiku si está etiquetado), términos, owners, % del dominio vs % del control, etiquetas,
 librerías aceptadas por Jev y % de repos que ya las declaran, y hasta `site_examples` ejemplos de owners
@@ -38,6 +39,7 @@ def nan_none(x):
 
 
 lab = pd.read_csv(OUT / "etiquetado.csv").set_index("topic")
+en = pd.read_csv(OUT / "descripciones_en.csv").set_index("topic")  # nombre y descripción en inglés (etapa 8b)
 use = pd.read_csv(OUT / "uso_librerias.csv").set_index("topic")
 secs = {}  # "Específicos de django" y "de llm" van a la misma sección: se concatenan, ordenadas por owners
 for t, df in domain_sections(cl).items():
@@ -68,7 +70,7 @@ for t, sid in picked.items():
     if t in lab.index:
         lr = lab.loc[t]
         item["label"] = {
-            "description": lr.descripcion_haiku, "jev": lr.categoria_jev, "jev_ambiguous": bool(lr.jev_ambigua),
+            "name": en.loc[t, "name_en"], "description": en.loc[t, "description_en"], "jev": lr.categoria_jev, "jev_ambiguous": bool(lr.jev_ambigua),
             "jev_probs": {k: float(lr[f"jev_p_{k}"]) for k in ("uso_sdk", "idiomatico_framework", "utilidad_reimplementada", "otro")},
             "haiku": lr.categoria_haiku, "status": lr.estado,
             "libraries": [x for x in str(nan_none(lr.librerias_aceptadas) or "").split("; ") if x],
