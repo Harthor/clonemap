@@ -141,6 +141,13 @@ Tokens are read at runtime from `.env` files (git-ignored) and never written els
 - **LLM labeling:** **$0.072** in total on OpenRouter, measured from the account balance. That includes a first pass with a
   routed model that was discarded because the responding model could not be verified, and retries of truncated responses.
 
+## Third-party code
+
+The examples and links in the explorer point to public repositories owned by third parties, which keep their own licenses.
+clonemap does not redistribute their code: it shows only function signatures and short excerpts (at most 5 lines per
+function), each linked to the source file at the exact commit. clonemap's own MIT license (see [LICENSE](LICENSE)) covers
+this repository's code and does not apply to those excerpts.
+
 ## Repository layout
 
 - `scripts/`: one script per stage, plus shared modules (`common.py`, `deps.py`, `domain_stats.py`, `framework.py`).
